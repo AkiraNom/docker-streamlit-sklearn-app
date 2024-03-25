@@ -1,0 +1,21 @@
+{
+	"name": "Python 3",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": "..",
+		"args": {}
+	},
+
+	"extensions": [
+		"ms-python.python",
+		"ms-python.vscode-pylance",
+		"ms-toolsai.jupyter",
+		"ms-toolsai.jupyter-keymap",
+		"ms-toolsai.jupyter-renderers",
+		"vscode-icons-team.vscode-icons",
+		"ms-azuretools.vscode-docker",
+		"Rubymaniac.vscode-paste-and-indent",
+		"GrapeCity.gc-excelviewer",
+		"bierner.docs-view"
+	]
+}
