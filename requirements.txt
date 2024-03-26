@@ -1,6 +1,11 @@
+lime
+matplotlib
 pandas
 plotly
 streamlit
+scipy==1.11.4
 scikit-learn
+scikit-plot
+seaborn
 ipykernel
 

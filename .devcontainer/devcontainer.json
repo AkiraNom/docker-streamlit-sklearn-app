@@ -6,6 +6,9 @@
 		"args": {}
 	},
 
+	// dev containter name
+	"runArgs": [ "--name", "Streamlit_ML_app"],
+	//vscode extension
 	"extensions": [
 		"ms-python.python",
 		"ms-python.vscode-pylance",
