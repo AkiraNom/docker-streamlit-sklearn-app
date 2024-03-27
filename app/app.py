@@ -124,7 +124,8 @@ with st.container():
                     Shape of Trainng dataset    :   {x_train.shape} \n
                     Shape of Testing dataset    :   {x_test.shape} \n
                     Number of Class             :   {len(np.unique(Y))} \n
-                    Target Class                :   {target_class_name} \n
+                    Target Class                :   {(*target_class_name,)} \n
+                    Random_state                :   {st.session_state['random_state']}
                 """)
     with col3:
         st.write('')
@@ -168,22 +169,25 @@ with col2:
     st.write('')
 
 with col3:
-    if st.session_state['algorithm']=='GBC':
-        st.subheader('Feature Importance')
+    st.subheader('Feature Importance')
+
+    st.write(st.session_state)
+    if st.session_state['algorithm']!='Support Vector Machines':
+
         st.write('')
-        coefficients = model.coef_
+        if st.session_state['algorithm'] != 'Logistic Regression':
+            coefficients = model.feature_importances_
+        else:
+            coefficients = model.coef_
 
         avg_importance = np.mean(np.abs(coefficients), axis=0)
         feature_importance = pd.DataFrame({'Feature': X.columns, 'Importance': avg_importance})
         feature_importance = feature_importance.sort_values('Importance', ascending=True)
 
-        feature_importance_plot, ax = plt.subplots(figsize=(6, 4))
-        ax.barh(feature_importance['Feature'], feature_importance['Importance'])
-        ax.set_xlabel('Importance')
-        # ax.set_ylabel('Feature')
-        ax.set_title('Feature Importance')
-
-        st.pyplot(feature_importance_plot)
+        st.plotly_chart(px.bar(feature_importance, x='Importance', y="Feature", orientation='h'), use_container_width=True)
+    else:
+        st.write('')
+        st.write(f'''{st.session_state['algorithm']} don't offer a direct feature importance calculation''')
 
 
 st.header('Model Evaluation', divider='orange')
@@ -195,13 +199,18 @@ with st.expander('Details of classification report'):
             st.markdown(f'''
                     - <b>Accuracy</b> - It represents the ratio of correctly predicted labels to the total predicted labels\n
                         &emsp;&emsp;&emsp;&emsp;$$Accuracy = (TP + TN) / (TP + FP + TN + FN)$$
-                    - <b>Precision (Positive predictive rate)</b>- It represents the ratio of number of actual positive class correctly predicted to the total number of predicted positive class\n
+                    - <b>Precision (Positive predictive rate)</b>- It represents the ratio of number of actual positive class correctly predicted to
+                    the total number of predicted positive class\n
                         &emsp;&emsp;&emsp;&emsp;$$  Precision = TP / (TP+FP)  $$
-                    - <b>Recall (Sensitivity)</b> - It represents the ratio of number of actual positive class correctly predicted to the total number of actual positive class \n
+                    - <b>Recall (Sensitivity)</b> - It represents the ratio of number of actual positive class correctly predicted
+                    to the total number of actual positive class \n
                         &emsp;&emsp;&emsp;&emsp;$$Recall = TP / (TP+FN)$$
-                    - <b>f1-score</b> - It's a harmonic mean of precision & recall \n
+                    - <b>f1-score</b> - It is a weighted harmonic mean of precision and recall normalized between 0 and 1.
+                    F score of 1 indicates a perfect balance as precision and the recall are inversely related.
+                    A high F1 score is useful where both high recall and precision is important. \n
                         &emsp;&emsp;&emsp;&emsp;$$F1-Score = 2 (Precision*recall) / (Precision + recall)$$
-                    - <b>support</b> - It represents number of occurrences of particular class in Y_true \n
+                    - <b>support</b> - It represents the number of actual occurrences of the class in the test data set.
+                    Imbalanced support in the training data may indicate the need for stratified sampling or rebalancing \n
                     ''',
                     unsafe_allow_html=True)
 
@@ -236,13 +245,3 @@ with st.container():
 
 
 
-fig = plt.figure(figsize=(15,6))
-ax = fig.add_subplot()
-y_test_probs = model.predict_proba(x_test)
-skplt.metrics.plot_roc(y_test, y_test_probs)
-st.pyplot(fig)
-
-
-from sklearn.multiclass import OneVsRestClassifier
-
-st.write(y_test_probs)

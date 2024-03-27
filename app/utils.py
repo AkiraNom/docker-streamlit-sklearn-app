@@ -90,15 +90,12 @@ def make_sidebar():
         with tab1:
 
             selected_dataset = st.selectbox('Select Dataset',('Iris','Breast Cancer','Wine Dataset'))
-            # selected_dataset_= 'Iris'
-            #Check out all available dataset: https://scikit-learn.org/stable/datasets/toy_dataset.html
 
             st.subheader(f'{selected_dataset} dataset selected')
 
             st.session_state['dataset'] = selected_dataset
 
             selected_algorithm = st.selectbox('Select Algorithm',('Logistic Regression','Random Forests','GBC','Decision Tree','KNN','Support Vector Machines'))
-            # selected_algorithm = 'Logistic Regression'
 
             st.subheader(f'{selected_algorithm} algorithm selected')
 
@@ -107,10 +104,8 @@ def make_sidebar():
             if st.checkbox('random_state on'):
                 selected_random_state = st.number_input('Type random state', step=1)
                 st.session_state['random_state'] = selected_random_state
-
             else:
-                st.session_state['rondom_state'] = 1234
-
+                st.session_state['random_state'] = None
 
         with tab2:
 
