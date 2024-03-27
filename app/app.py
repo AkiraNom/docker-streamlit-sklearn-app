@@ -111,7 +111,7 @@ st.header('Model Training', divider='orange')
 X = df.drop(columns=['target'])
 Y = df['target']
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'])
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'], random_state=st.session_state['random_state'])
 
 st.subheader('Data structure')
 with st.container():
@@ -232,3 +232,17 @@ with st.container():
         st.dataframe(df_classification_report, use_container_width=True)
     with col3:
         st.write('')
+
+
+
+
+fig = plt.figure(figsize=(15,6))
+ax = fig.add_subplot()
+y_test_probs = model.predict_proba(x_test)
+skplt.metrics.plot_roc(y_test, y_test_probs)
+st.pyplot(fig)
+
+
+from sklearn.multiclass import OneVsRestClassifier
+
+st.write(y_test_probs)

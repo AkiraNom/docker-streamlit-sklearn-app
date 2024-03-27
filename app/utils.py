@@ -104,6 +104,14 @@ def make_sidebar():
 
             st.session_state['algorithm'] = selected_algorithm
 
+            if st.checkbox('random_state on'):
+                selected_random_state = st.number_input('Type random state', step=1)
+                st.session_state['random_state'] = selected_random_state
+
+            else:
+                st.session_state['rondom_state'] = 1234
+
+
         with tab2:
 
             st.write('')
