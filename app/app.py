@@ -3,7 +3,7 @@ import streamlit as st
 from sklearn.datasets import load_wine
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, roc_auc_score, classification_report
 from joblib import load
 
 import pandas as pd
@@ -106,13 +106,32 @@ with col2:
                 )
     st.pyplot(corr_fig)
 
+
+
 st.header('Model Training', divider='orange')
 
-X = df.drop(columns=['target'])
+if 'features_included' not in st.session_state:
+    st.session_state['features_included'] = df.columns[:-1].tolist()
+if 'features_excluded' not in st.session_state:
+    st.session_state['features_excluded'] = df.columns[:-1].tolist()
+
+
+with st.expander('Model Selection'):
+    include_options = st.multiselect(
+    'Features included in the model',
+    df.columns[:-1].tolist(),
+    df.columns[:-1].tolist())
+
+    st.write('You selected:', include_options)
+    exclude_options = [x for x in df.columns[:-1].tolist() if x not in include_options]
+
+    st.session_state['features_included'] = include_options
+    st.session_state['features_excluded'] = exclude_options
+
+X = df.drop(columns=['target']).loc[:,st.session_state['features_included']]
 Y = df['target']
 
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'], random_state=st.session_state['random_state'])
-
 st.subheader('Data structure')
 with st.container():
     col1, col2, col3 =st.columns([0.5,4,1])
@@ -125,12 +144,15 @@ with st.container():
                     Shape of Testing dataset    :   {x_test.shape} \n
                     Number of Class             :   {len(np.unique(Y))} \n
                     Target Class                :   {(*target_class_name,)} \n
+                    Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
+                    Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
                     Random_state                :   {st.session_state['random_state']}
                 """)
     with col3:
         st.write('')
 
 st.subheader('Model construction')
+
 start_time = time.time()
 model = select_ml_algorithm(st.session_state['algorithm'], st.session_state['params'])
 model.fit(x_train, y_train)
@@ -190,6 +212,26 @@ with col3:
 
 
 st.header('Model Evaluation', divider='orange')
+
+# Overall metrics
+y_test_prob = model.predict_proba(x_test)
+y_train_pred = model.predict(x_train)
+
+with st.container():
+    col1, col2, col3 = st.columns([0.5,4,1])
+    with col1:
+        st.write('')
+    with col2:
+        st.code(f'''
+                Train Accuracy      :   {accuracy_score(y_train, y_train_pred):.5f}\n
+                Overall Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
+                Overall Precision   :   {precision_score(y_test, y_test_preds, average='macro'):.5f}\n
+                Overall Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
+                Average AUC         :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
+                ''')
+    with col3:
+        st.write('')
+
 st.subheader("Classification Report")
 with st.expander('Details of classification report'):
     with st.container():
@@ -227,11 +269,11 @@ with st.container():
         st.markdown('<b>Summary statics</b>', unsafe_allow_html=True)
         # selected_precision = st.slider('Precision', min_value=1, max_value=10, value=5, step=1)
         df_classification_report = pd.DataFrame.from_dict(classification_report(y_test,
-                                                                  y_test_preds,
-                                                                  target_names=target_class_name,
-                                                                  output_dict=True))\
-                                                                      .transpose()\
-                                                                      .style.format(precision=5)
+                                                                                y_test_preds,
+                                                                                target_names=target_class_name,
+                                                                                output_dict=True))\
+                                                                                    .transpose()\
+                                                                                    .style.format(precision=5)
         st.dataframe(df_classification_report, use_container_width=True)
     with col3:
         st.write('')
