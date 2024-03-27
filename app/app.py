@@ -236,19 +236,6 @@ with st.container():
     with col3:
         st.write('')
 
-# class prediction error
-from yellowbrick.classifier import ClassPredictionError
-
-if st.checkbox('Display Class prediction error'):
-    st.container(height=500, border=False):
-        fig, ax = plt.subplots()
-        visualizer = ClassPredictionError(select_ml_algorithm(st.session_state['algorithm'], st.session_state['params']),
-                                        classes=target_class_name)
-        visualizer.fit(x_train, y_train)
-
-        visualizer.score(x_test, y_test)
-        st.write(visualizer)
-        st.pyplot(fig)
 
 # -------------------------------------------------
 # prediction with your input
