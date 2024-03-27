@@ -171,7 +171,6 @@ with col2:
 with col3:
     st.subheader('Feature Importance')
 
-    st.write(st.session_state)
     if st.session_state['algorithm']!='Support Vector Machines':
 
         st.write('')
@@ -218,12 +217,7 @@ with st.expander('Details of classification report'):
             st.write('')
             st.markdown('<b>Confusion Matrix </b>', unsafe_allow_html=True)
             st.write('')
-            st.markdown('''
-                        ||Predict Positive|Predict Negative|
-                        |---|:---:|:---:|
-                        <b>Actrual Positive</b>|TP|FN|
-                        <b>Actrual Negative</b>|FP|TN|
-                        ''', unsafe_allow_html=True)
+            st.image('https://2.bp.blogspot.com/-EvSXDotTOwc/XMfeOGZ-CVI/AAAAAAAAEiE/oePFfvhfOQM11dgRn9FkPxlegCXbgOF4QCLcBGAs/s1600/confusionMatrxiUpdated.jpg')
 st.write('')
 with st.container():
     col1, col2, col3 = st.columns([1,3,1])
@@ -242,6 +236,22 @@ with st.container():
     with col3:
         st.write('')
 
+# class prediction error
+from yellowbrick.classifier import ClassPredictionError
 
+if st.checkbox('Display Class prediction error'):
+    st.container(height=500, border=False):
+        fig, ax = plt.subplots()
+        visualizer = ClassPredictionError(select_ml_algorithm(st.session_state['algorithm'], st.session_state['params']),
+                                        classes=target_class_name)
+        visualizer.fit(x_train, y_train)
+
+        visualizer.score(x_test, y_test)
+        st.write(visualizer)
+        st.pyplot(fig)
+
+# -------------------------------------------------
+# prediction with your input
+# https://builtin.com/data-science/feature-importance
 
 
