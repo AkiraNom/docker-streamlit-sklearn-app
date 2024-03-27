@@ -32,7 +32,6 @@ from utils import make_sidebar, cover_page, load_dataset, select_ml_algorithm
 warnings.filterwarnings('ignore')
 
 st.set_page_config(
-    # page_title="Ex-stream-ly Cool App",
     # page_icon="🧊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -45,13 +44,15 @@ df, target_class_name = load_dataset(st.session_state['dataset'])
 
 st.header('Data', divider='orange')
 
-tab1, tab2 = st.tabs(['Column Summary','Data Table'])
+tab1, tab2 = st.tabs(['Data Table','Column Summary'])
 
 with tab1:
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+with tab2:
     for col in df.columns[:-1]:
         with st.container():
             with st.expander(f'{col}'):
-            # st.markdown(f'''<b>{col} </b>''', unsafe_allow_html=True)
                 col1, col2, col3, col4 = st.columns([1,4,3,3])
                 with col1:
                     st.write('')
@@ -70,13 +71,15 @@ with tab1:
                     stats.loc['missing'] = df[col].isnull().sum()
                     st.write(stats)
 
-with tab2:
-    st.dataframe(df, use_container_width=True, hide_index=True)
 
 st.header('Data preprocessing',divider='orange')
 
 with st.expander('Missing Data Handling'):
-    st.write(df.isnull().sum())
+    col1, col2 = st.columns([0.5,4])
+    with col1:
+        st.write('')
+    with col2:
+        st.write(df.isnull().sum())
 
 with st.expander('Data Normalization'):
     st.write('----------')
@@ -88,9 +91,8 @@ with col1:
     st.subheader('Scatterplot Matrix')
     st.write('Visualization of the relationship between each pair of variables')
     pair_fig =  sns.pairplot(df, hue='target',
-                            #  palette='husl',
-                            markers=['o','s','D'],
-                            corner=True)
+                             markers=['o','s','D'],
+                             corner=True)
     st.pyplot(pair_fig)
 
 with col2:
@@ -150,12 +152,9 @@ if model:
         st.write('')
 
 st.header('Model Prediction', divider='orange')
-st.divider()
 
 y_test_preds = model.predict(x_test)
 
-
-st.header("Confusion Matrix | Feature Importances", divider='orange')
 col1, col2, col3 = st.columns([1.5,0.5,2])
 with col1:
     st.subheader('Confusion Matrix')
@@ -189,4 +188,47 @@ with col3:
 
 st.header('Model Evaluation', divider='orange')
 st.subheader("Classification Report")
-st.code(classification_report(y_test, y_test_preds))
+with st.expander('Details of classification report'):
+    with st.container():
+        col1, col2 = st.columns([2,1])
+        with col1:
+            st.markdown(f'''
+                    - <b>Accuracy</b> - It represents the ratio of correctly predicted labels to the total predicted labels\n
+                        &emsp;&emsp;&emsp;&emsp;$$Accuracy = (TP + TN) / (TP + FP + TN + FN)$$
+                    - <b>Precision (Positive predictive rate)</b>- It represents the ratio of number of actual positive class correctly predicted to the total number of predicted positive class\n
+                        &emsp;&emsp;&emsp;&emsp;$$  Precision = TP / (TP+FP)  $$
+                    - <b>Recall (Sensitivity)</b> - It represents the ratio of number of actual positive class correctly predicted to the total number of actual positive class \n
+                        &emsp;&emsp;&emsp;&emsp;$$Recall = TP / (TP+FN)$$
+                    - <b>f1-score</b> - It's a harmonic mean of precision & recall \n
+                        &emsp;&emsp;&emsp;&emsp;$$F1-Score = 2 (Precision*recall) / (Precision + recall)$$
+                    - <b>support</b> - It represents number of occurrences of particular class in Y_true \n
+                    ''',
+                    unsafe_allow_html=True)
+
+        with col2:
+            st.write('')
+            st.markdown('<b>Confusion Matrix </b>', unsafe_allow_html=True)
+            st.write('')
+            st.markdown('''
+                        ||Predict Positive|Predict Negative|
+                        |---|:---:|:---:|
+                        <b>Actrual Positive</b>|TP|FN|
+                        <b>Actrual Negative</b>|FP|TN|
+                        ''', unsafe_allow_html=True)
+st.write('')
+with st.container():
+    col1, col2, col3 = st.columns([1,3,1])
+    with col1:
+        st.write('')
+    with col2:
+        st.markdown('<b>Summary statics</b>', unsafe_allow_html=True)
+        # selected_precision = st.slider('Precision', min_value=1, max_value=10, value=5, step=1)
+        df_classification_report = pd.DataFrame.from_dict(classification_report(y_test,
+                                                                  y_test_preds,
+                                                                  target_names=target_class_name,
+                                                                  output_dict=True))\
+                                                                      .transpose()\
+                                                                      .style.format(precision=5)
+        st.dataframe(df_classification_report, use_container_width=True)
+    with col3:
+        st.write('')
