@@ -308,12 +308,16 @@ st.write(f'''{st.session_state['test']}''')
 st.session_state['target'] = 'target'
 
 st.markdown('<b>1. Missing Data Handling</b>', unsafe_allow_html=True)
-with st.expander('Missing Data Handling'):
-    cols = st.columns([0.5,2,0.5,4])
-    with cols[0]:
-        st.write('')
-    with cols[1]:
-            st.dataframe(df.isnull().sum(), use_container_width=True)
+n_nulls = df.isnull().sum().sum()
+if 'impute' not in st.session_state:
+    st.session_state['impute'] = False
+if n_nulls != 0:
+    with st.expander('Missing Data Handling'):
+        cols = st.columns([0.5,2,0.5,4])
+        with cols[0]:
+            st.write('')
+        with cols[1]:
+            st.dataframe(df.isnull().sum().to_frame('Number of Nulls'), use_container_width=True)
             with st.popover('Select imputation strategy'):
                 with st.form('Missing value imputation'):
                     missing_val_cols = df.columns[df.isnull().any()].tolist()
@@ -332,14 +336,20 @@ with st.expander('Missing Data Handling'):
                             else:
                                 pass
 
-                    st.form_submit_button('Submit')
-    with cols[2]:
-        st.write('')
-    with cols[3]:
-        st.write('drop raw containing null')
+                    submitted_impute_strategy = st.form_submit_button('Submit')
+                    if submitted_impute_strategy:
+                        st.session_state['impute'] = True
+        with cols[2]:
+            st.write('')
+        with cols[3]:
+            st.write('drop raw containing null')
+else:
+    st.info('There is no missing value')
 
 #  ----------- Data Normalization -----------------
 st.markdown('<b>2. Data Normalization </b>', unsafe_allow_html=True)
+if 'normalization' not in st.session_state:
+    st.session_state['normalization'] = False
 with st.expander('Data Normalization'):
     numeric_features = df.drop(st.session_state['target'], axis=1).select_dtypes(include=np.number).columns.tolist()
     categorical_features = df.drop(st.session_state['target'], axis=1).select_dtypes(include='object').columns.tolist()
@@ -386,4 +396,8 @@ with st.expander('Data Normalization'):
                 st.session_state['feature_encoded'] = None
 
         st.info('Currently the same normalization method is applied to all selected numeric/categorical features. It might be benefitial to add a feature to change normalization method per feature')
-        st.form_submit_button('Apply')
+
+        submitted_normalization_strategy = st.form_submit_button('Apply')
+
+        if submitted_normalization_strategy:
+            st.session_state['normalization'] = True
