@@ -55,13 +55,25 @@ with cols[3]:
 tabs = st.tabs(['Column Summary', 'Data Table'])
 
 with tabs[0]:
+    with st.container():
+        with st.expander('Table summary'):
+            cols = st.columns([0.5,2,1])
+            with cols[0]:
+                st.write('')
+            with cols[1]:
+                table_summary = df.describe()
+                table_summary.loc['Nulls'] = df.isnull().sum()
+                st.write(table_summary)
+            with cols[2]:
+                st.write()
+
     for i, col_name in enumerate(df.columns):
         with st.container():
             with st.expander(col_name):
-                col1, col2, col3, col4 = st.columns([1,4,3,3])
-                with col1:
+                cols = st.columns([1,4,3,3])
+                with cols[0]:
                     st.write('')
-                with col2:
+                with cols[1]:
                     if st.checkbox('Show target class',key=i):
                         color = st.session_state['target']
                     else:
@@ -69,11 +81,11 @@ with tabs[0]:
 
                     fig = px.histogram(df, x= col_name, color=color,width=500, height=300)
                     st.plotly_chart(fig)
-                with col3:
+                with cols[2]:
                     st.write('')
-                with col4:
+                with cols[3]:
                     stats = df[col_name].describe()
-                    stats.loc['missing'] = df[col_name].isnull().sum()
+                    stats.loc['Nulls'] = df[col_name].isnull().sum()
                     st.write(stats)
 with tabs[1]:
     st.dataframe(df, use_container_width=True, hide_index=True)
