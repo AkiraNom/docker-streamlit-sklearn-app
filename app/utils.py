@@ -26,12 +26,12 @@ def load_dataset(selected_dataset):
     feature_data = data.data
     columns = data.feature_names
     target = data.target
-    target_class_name = data.target_names
+    target_class_names = data.target_names
 
     df = pd.DataFrame(feature_data, columns = columns)
     df.loc[:,'target'] = target.reshape(-1,1)
 
-    return df, target_class_name
+    return df, target_class_names
 
 def select_ml_algorithm(algorithm,params):
     if algorithm=='KNN':
@@ -77,6 +77,11 @@ def optimize_hyperparameters(clf_name):
 
     return params
 
+def initialize_session_state():
+    '''Clear session_state'''
+    for key in st.session_state.keys():
+        del st.session_state[key]
+
 def make_sidebar():
     with st.sidebar:
         st.title('💎 Menu')
@@ -90,9 +95,10 @@ def make_sidebar():
                 st.session_state['dataset'] = None
             with st.form('Dataset'):
 
-                selected_dataset = st.selectbox('Select Dataset',('Iris','Breast Cancer','Wine Dataset'))
+                selected_dataset = st.selectbox('Select Dataset',('Iris','Wine Dataset','Breast Cancer'))
 
                 if st.form_submit_button('Load Data'):
+                    initialize_session_state()
                     st.session_state['dataset'] = selected_dataset
 
 
@@ -129,11 +135,10 @@ def make_sidebar():
 def load_dataset_description(selected_dataset):
     if selected_dataset=="Iris":
         data = datasets.load_iris()
-    elif selected_dataset=="Breast Cancer":
-        data = datasets.load_breast_cancer()
     elif selected_dataset=="Wine Dataset":
         data = datasets.load_wine()
-
+    elif selected_dataset=="Breast Cancer":
+        data = datasets.load_breast_cancer()
 
 def cover_page():
 
@@ -227,17 +232,16 @@ def image_slideshow():
                             </div>
 
                             <div class="mySlides fade">
-                            <div class="numbertext">2 / 3 : Brest Cancer Data</div>
-                            <img src=https://images.unsplash.com/photo-1581595219618-375a1a48d324?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                            style="width:100%">
-                            </div>
-
-                            <div class="mySlides fade">
-                            <div class="numbertext">3 / 3 : Wine Data</div>
+                            <div class="numbertext">2 / 3 : Wine Data</div>
                             <img src=https://images.unsplash.com/photo-1568213816046-0ee1c42bd559?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fHdpbmV8ZW58MHx8MHx8fDA%3D"
                             style="width:100%">
                             </div>
 
+                            <div class="mySlides fade">
+                            <div class="numbertext">3 / 3 : Brest Cancer Data</div>
+                            <img src=https://images.unsplash.com/photo-1581595219618-375a1a48d324?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                            style="width:100%">
+                            </div>
                             </div>
 
                             <div style="text-align:center">

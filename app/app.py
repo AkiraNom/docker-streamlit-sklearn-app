@@ -16,6 +16,7 @@ import time
 import plotly.express as px
 
 from utils import make_sidebar, cover_page, load_dataset, select_ml_algorithm
+from plot_func import plot_scatter_matrix, generate_heatmap
 
 warnings.filterwarnings('ignore')
 
@@ -35,7 +36,7 @@ if st.session_state['dataset'] == None:
     st.warning('Please select dataset to load on the sidebar')
     st.stop()
 
-df, target_class_name = load_dataset(st.session_state['dataset'])
+df, target_class_names = load_dataset(st.session_state['dataset'])
 
 st.header('Data', divider='orange')
 if 'target' not in st.session_state:
@@ -63,15 +64,13 @@ tabs = st.tabs(['Column Summary', 'Data Table'])
 with tabs[0]:
     with st.container():
         with st.expander('Table summary'):
-            cols = st.columns([0.5,2,1])
+            cols = st.columns([0.1,2])
             with cols[0]:
                 st.write('')
             with cols[1]:
                 table_summary = df.describe()
                 table_summary.loc['Nulls'] = df.isnull().sum()
                 st.write(table_summary)
-            with cols[2]:
-                st.write()
 
     for i, col_name in enumerate(df.columns):
         with st.container():
@@ -102,22 +101,31 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader('Scatterplot Matrix')
     st.write('Visualization of the relationship between each pair of variables')
-    pair_fig =  sns.pairplot(df, hue=st.session_state['target'],
-                             markers=['o','s','D'],
-                             corner=True)
-    st.pyplot(pair_fig)
 
+    if st.session_state['dataset'] == 'Iris':
+        st.plotly_chart(plot_scatter_matrix(df, st.session_state['target'], target_class_names))
+
+    else:
+        if 'feature_plotted' not in st.session_state:
+            st.session_state['feature_plotted'] = False
+
+        st.info('Including more than 8 features makes a graph difficult to observe data points')
+        with st.form('Scatter_matrix_plot_large_features'):
+            feature_plotted = st.multiselect('Select features for scatterplot matrix',
+                                        options=df.drop(columns=st.session_state['target']).columns.tolist(),
+                                        default=df.drop(columns=st.session_state['target']).columns.tolist()[:5],
+                                        )
+            if st.form_submit_button('Run'):
+                st.session_state['feature_plotted'] = feature_plotted
+
+        if st.session_state['feature_plotted']:
+            st.plotly_chart(plot_scatter_matrix(df, st.session_state['target'], target_class_names, st.session_state['feature_plotted']))
 with col2:
     st.subheader('Correlation plot')
     st.write('compute the coreraltion coefficient')
-    corr = df.drop(st.session_state['target'],axis=1).corr()
-    corr_fig, ax = plt.subplots(figsize=(5,4))
-    sns.heatmap(corr,
-                annot=True,
-                ax=ax,
-                )
-    st.pyplot(corr_fig)
+    st.pyplot(generate_heatmap(df, st.session_state['target']))
 
+st.header('Data Pre-processing', divider='orange')
 with st.form('Pre-processing'):
 # ----------- Feature selection -----------------------------------
     if 'features_included' not in st.session_state:
@@ -130,7 +138,7 @@ with st.form('Pre-processing'):
         include_options = st.multiselect(
         'Features included in the model',
         df.drop(st.session_state['target'], axis=1).columns.tolist(),
-        df.drop(st.session_state['target'], axis=1).columns.tolist())
+        df.drop(st.session_state['target'], axis=1).columns.tolist()[:10])
 
         exclude_options = [x for x in df.drop(st.session_state['target'], axis=1).columns.tolist() if x not in include_options]
 
@@ -250,10 +258,6 @@ with st.form('Pre-processing'):
 
         st.info('Currently the same normalization/hot-encoding methods are applied to all selected numeric/categorical features. It might be benefitial to add a feature to change normalization method per feature')
 
-
-    if st.checkbox('test'):
-        st.session_state['null_status'] = True
-
     submitted = st.form_submit_button('Apply')
 
     if submitted:
@@ -269,7 +273,7 @@ with st.form('Pre-processing'):
                             Shape of predictor dataset  :   {df.drop(columns=st.session_state['target']).shape} \n
                             Target column name          :   {st.session_state['target']}\n
                             Number of class             :   {len(np.unique(df[st.session_state['target']]))} \n
-                            Target class                :   {(*target_class_name,)} \n
+                            Target class                :   {(*target_class_names,)} \n
                             Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
                             Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
                             Missing values              :   {st.session_state['null_status']}\n
@@ -304,7 +308,7 @@ st.write(st.session_state)
 #                     Shape of testing dataset    :   {x_test.shape} \n
 #                     Number of class             :   {len(np.unique(Y))} \n
 #                     Target column name          :   {st.session_state['target']}\n
-#                     Target class                :   {(*target_class_name,)} \n
+#                     Target class                :   {(*target_class_names,)} \n
 #                     Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
 #                     Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
 #                     Random_state                :   {st.session_state['random_state']}
@@ -435,7 +439,7 @@ st.write(st.session_state)
 #         # selected_precision = st.slider('Precision', min_value=1, max_value=10, value=5, step=1)
 #         df_classification_report = pd.DataFrame.from_dict(classification_report(y_test,
 #                                                                                 y_test_preds,
-#                                                                                 target_names=target_class_name,
+#                                                                                 target_names=target_class_names,
 #                                                                                 output_dict=True))\
 #                                                                                     .transpose()\
 #                                                                                     .style.format(precision=5)
