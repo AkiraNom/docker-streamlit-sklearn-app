@@ -1,9 +1,7 @@
 import pandas as pd
 import streamlit as st
-
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
-from sklearn.metrics import mean_squared_error,r2_score
 from sklearn.model_selection import train_test_split,cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import scale
@@ -14,7 +12,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
-# from xgboost import XGBClassifier
 
 @st.cache_data
 def load_dataset(selected_dataset):
