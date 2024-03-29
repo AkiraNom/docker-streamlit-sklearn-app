@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
 from sklearn.model_selection import train_test_split,cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
@@ -85,12 +86,16 @@ def make_sidebar():
         tab1, tab2, tab3 = st.tabs(['Data :clipboard:', 'Model parameters', 'Help'])
 
         with tab1:
+            if 'dataset' not in st.session_state:
+                st.session_state['dataset'] = None
+            with st.form('Dataset'):
 
-            selected_dataset = st.selectbox('Select Dataset',('Iris','Breast Cancer','Wine Dataset'))
+                selected_dataset = st.selectbox('Select Dataset',('Iris','Breast Cancer','Wine Dataset'))
 
-            st.subheader(f'{selected_dataset} dataset selected')
+                if st.form_submit_button('Load Data'):
+                    st.session_state['dataset'] = selected_dataset
 
-            st.session_state['dataset'] = selected_dataset
+
 
             selected_algorithm = st.selectbox('Select Algorithm',('Logistic Regression','Random Forests','GBC','Decision Tree','KNN','Support Vector Machines'))
 
@@ -132,13 +137,140 @@ def load_dataset_description(selected_dataset):
 
 def cover_page():
 
-    st.header('Iris Classification')
-
-    col1,col2,col3 = st.columns([1,4,1])
-
-    with col1:
+    st.header('Multilabel Machine Learning Classification Model')
+    cols = st.columns([0.2,2,3])
+    with cols[0]:
         st.write('')
-    with col2:
-        st.image('https://miro.medium.com/v2/resize:fit:1400/format:webp/0*Uw37vrrKzeEWahdB')
-    with col3:
-        st.write('')
+    with cols[1]:
+        st.write('''
+                 ML web app is developed with scikit-learn and streamlit.\n
+                 Scikit-learn is an open source machine learning library that supports supervised and unsupervised learning.\n
+                 Streamlit is an open-source Python library that makes it easy to create and share beautiful, custom web apps for machine learning and data science.
+                 ''')
+        icon_cols = st.columns([0.5,2,0.5,2])
+        with icon_cols[0]:
+            st.write('')
+        with icon_cols[1]:
+            st.image('./img/scikit-learn.png', width=100)
+            st.write('scikit-learn')
+        with icon_cols[2]:
+            st.write('')
+        with icon_cols[3]:
+            st.image('./img/Streamlit.png', width=100)
+            st.markdown('&nbsp;&nbsp;&nbsp;streamlit', unsafe_allow_html=True)
+
+    with cols[2]:
+        image_slideshow()
+
+
+def image_slideshow():
+    '''
+    The codes originate from https://discuss.streamlit.io/t/automatic-slideshow/38342
+    by TomJohn
+    '''
+    return components.html("""
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                            <meta name="viewport" content="width=device-width, initial-scale=1">
+                            <style>
+                            * {box-sizing: border-box;}
+                            body {font-family: Verdana, sans-serif;}
+                            .mySlides {display: none;}
+                            img {vertical-align: middle;}
+
+                            /* Slideshow container */
+                            .slideshow-container {
+                            max-width: 1000px;
+                            position: relative;
+                            margin: auto;
+                            }
+
+                            /* Number and caption text (1/3 etc) */
+                            .numbertext {
+                            color: #f2f2f2;
+                            font-size: 12px;
+                            padding: 8px 12px;
+                            position: absolute;
+                            top: 0;
+                            }
+
+                            .active {
+                            background-color: #717171;
+                            }
+
+                            /* Fading animation */
+                            .fade {
+                            animation-name: fade;
+                            animation-duration: 1.5s;
+                            }
+
+                            @keyframes fade {
+                            from {opacity: .4}
+                            to {opacity: 1}
+                            }
+
+                            /* On smaller screens, decrease text size */
+                            @media only screen and (max-width: 300px) {
+                            .text {font-size: 11px}
+                            }
+                            </style>
+                            </head>
+                            <body>
+
+                            <div class="slideshow-container">
+
+                            <div class="mySlides fade">
+                            <div class="numbertext">1 / 3 : Iris Data</div>
+                            <img src="https://images.unsplash.com/photo-1590377663350-cfc38d4b6e43?q=80&w=3431&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                            style="width:100%">
+                            </div>
+
+                            <div class="mySlides fade">
+                            <div class="numbertext">2 / 3 : Brest Cancer Data</div>
+                            <img src=https://images.unsplash.com/photo-1581595219618-375a1a48d324?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+                            style="width:100%">
+                            </div>
+
+                            <div class="mySlides fade">
+                            <div class="numbertext">3 / 3 : Wine Data</div>
+                            <img src=https://images.unsplash.com/photo-1568213816046-0ee1c42bd559?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fHdpbmV8ZW58MHx8MHx8fDA%3D"
+                            style="width:100%">
+                            </div>
+
+                            </div>
+
+                            <div style="text-align:center">
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                            </div>
+
+                            <script>
+                            let slideIndex = 0;
+                            showSlides();
+
+                            function showSlides() {
+                            let i;
+                            let slides = document.getElementsByClassName("mySlides");
+                            let dots = document.getElementsByClassName("dot");
+                            for (i = 0; i < slides.length; i++) {
+                                slides[i].style.display = "none";
+                            }
+                            slideIndex++;
+                            if (slideIndex > slides.length) {slideIndex = 1}
+                            for (i = 0; i < dots.length; i++) {
+                                dots[i].className = dots[i].className.replace(" active", "");
+                            }
+                            slides[slideIndex-1].style.display = "block";
+                            dots[slideIndex-1].className += " active";
+                            setTimeout(showSlides, 2000); // Change image every 2 seconds
+                            }
+                            </script>
+
+                            </body>
+                            </html>
+
+                        """,
+                        height=300,
+    )
