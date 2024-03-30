@@ -100,8 +100,7 @@ def initialize_session_state(df):
 
 def make_sidebar():
     with st.sidebar:
-        st.title('💎 Menu')
-        st.write('')
+        st.title('💎 Multilabel Machine Learning Classification App')
         st.write('')
 
         tab1, tab2 = st.tabs(['Data :clipboard:', 'Help'])
@@ -122,13 +121,13 @@ def make_sidebar():
                     initialize_session_state(df)
 
         with tab2:
-
             st.write('')
             st.write('short description of each dataset')
 
-        st.divider()
+        st.subheader('Navigation Menu', divider='orange')
         st.page_link('app.py', label = 'Overview dataset')
         st.page_link('pages/model_training.py', label='Build machine learning model')
+
 @st.cache_data
 def load_dataset_description(selected_dataset):
     if selected_dataset=="Iris":
@@ -139,7 +138,6 @@ def load_dataset_description(selected_dataset):
         data = datasets.load_breast_cancer()
 
 def cover_page():
-
     st.header('Multilabel Machine Learning Classification Model')
     cols = st.columns([0.2,2,3])
     with cols[0]:

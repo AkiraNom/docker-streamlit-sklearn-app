@@ -23,7 +23,6 @@ warnings.filterwarnings('ignore')
 st.set_page_config(
     # page_icon="🧊",
     layout="wide",
-    # initial_sidebar_state="collapsed",
     initial_sidebar_state="expanded",
 )
 
@@ -36,17 +35,10 @@ if st.session_state['dataset'] == None:
     st.warning('Please select dataset to load on the sidebar')
     st.stop()
 
-# df, target_class_names = load_dataset(st.session_state['dataset'])
 df = st.session_state['dataframe']
 target_class_names = st.session_state['target_class_names']
 
-
 st.header('Data', divider='orange')
-if 'target' not in st.session_state:
-    if 'target' in df.columns.tolist():
-        st.session_state['target'] = 'target'
-    else:
-        st.session_state['target'] = df.columns.tolist()[-1]
 
 cols = st.columns([0.2,0.5,2,0.5])
 with cols[0]:
@@ -148,14 +140,7 @@ with st.form('Pre-processing'):
 # -------------- Missing data handling  -------------------------------------
     st.markdown('<b>2. Missing Data Handling</b>', unsafe_allow_html=True)
 
-    if 'null_status' not in st.session_state:
-        st.session_state['null_status'] = False
-    if 'impute' not in st.session_state:
-        st.session_state['impute'] = False
-
-    n_nulls = df.isnull().sum().sum()
-    if n_nulls != 0:
-        st.session_state['null_status'] = True
+    if st.session_state['contain_nulls']:
         with st.expander('Missing Data Handling'):
             cols = st.columns([0.5,2,0.5,4])
             with cols[0]:
@@ -201,8 +186,7 @@ with st.form('Pre-processing'):
 #  ----------- Data Normalization -----------------
     st.markdown('<b>3. Data Normalization </b>', unsafe_allow_html=True)
 
-    if 'normalization' not in st.session_state:
-        st.session_state['normalization'] = False
+
     if 'scaler' not in st.session_state:
         st.session_state['scaler'] = None
     if 'features_scaled' not in st.session_state:
@@ -261,13 +245,12 @@ with st.form('Pre-processing'):
     submitted = st.form_submit_button('Apply')
 
     if submitted:
-
         with st.container():
             cols =st.columns([0.5,4,1])
             with cols[0]:
                 st.write('')
             with cols[1]:
-                if st.session_state['null_status'] &(st.session_state['impute']!=True):
+                if st.session_state['contain_nulls'] &(st.session_state['impute']!=True):
                  st.warning('Null values in your dataset may impact on performance of your machine learning model')
                 st.code(f"""
                             Shape of predictor dataset  :   {df.drop(columns=st.session_state['target']).shape} \n
@@ -276,11 +259,9 @@ with st.form('Pre-processing'):
                             Target class                :   {(*target_class_names,)} \n
                             Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
                             Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
-                            Missing values              :   {st.session_state['null_status']}\n
+                            Missing values              :   {st.session_state['contain_nulls']}\n
                             Imputation                  :   {st.session_state['impute']}\n
                             Normalization               :   {st.session_state['normalization']}     {st.session_state['scaler'] if st.session_state['normalization'] else ''}\n
-
-
                         """)
             with cols[2]:
                 st.write('')

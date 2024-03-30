@@ -24,7 +24,7 @@ def plot_scatter_matrix(df, target, target_class_names, selected_features=False)
         symbol=target
         )
     fig.update_traces(diagonal_visible=False,  showupperhalf=False)
-    fig.update_layout(font=dict(size=15))
+    fig.update_layout(font=dict(size=16))
 
     return fig
 
