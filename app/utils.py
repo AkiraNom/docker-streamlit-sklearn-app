@@ -85,7 +85,17 @@ def clear_session_state():
 
 def initialize_session_state(df):
     ''' initialize session_state'''
+
+    if 'target' in df.columns.tolist():
+        st.session_state['target'] = 'target'
+    else:
+        st.session_state['target'] = df.columns.tolist()[-1]
+
+    check_nulls(df)
+    st.session_state['impute'] =False
+    st.session_state['normalization'] = False
     st.session_state['features_included'] = df.drop(st.session_state['target'], axis=1).columns.tolist()
+    st.session_state['features_excluded'] = None
 
 
 def make_sidebar():
@@ -109,38 +119,16 @@ def make_sidebar():
                     st.session_state['dataset'] = selected_dataset
                     st.session_state['dataframe'] = df
                     st.session_state['target_class_names'] = target_class_names
-
-                    ## load data and initialize st.session_state
-
-            selected_algorithm = st.selectbox('Select Algorithm',('Logistic Regression','Random Forests','GBC','Decision Tree','KNN','Support Vector Machines'))
-
-            st.subheader(f'{selected_algorithm} algorithm selected')
-
-            st.session_state['algorithm'] = selected_algorithm
-
-            # if st.checkbox('random_state on'):
-            #     selected_random_state = st.number_input('Type random state', step=1)
-            #     st.session_state['random_state'] = selected_random_state
-            # else:
-            #     st.session_state['random_state'] = None
-
+                    initialize_session_state(df)
 
         with tab2:
 
             st.write('')
-            # st.subheader('Data Split')
-            # with st.container(border=True):
-            #     st.session_state['test_size'] = st.slider(label='Test Data Size', min_value=0.01, max_value=0.99, value=0.3, step=0.1)
-            #     st.markdown(f'''<b>Training data </b>: {1- st.session_state['test_size']}</style>''', unsafe_allow_html=True)
-            #     st.markdown(f'''<b>Testing data </b>: {st.session_state['test_size']}''', unsafe_allow_html=True)
-            # st.divider()
-            # st.subheader('Tune model parameters')
-            # st.session_state['params'] = optimize_hyperparameters(st.session_state['algorithm']
             st.write('short description of each dataset')
 
         st.divider()
         st.page_link('app.py', label = 'Overview dataset')
-        st.page_link('pages/model_training.py', label='Define machine learning model')
+        st.page_link('pages/model_training.py', label='Build machine learning model')
 @st.cache_data
 def load_dataset_description(selected_dataset):
     if selected_dataset=="Iris":
@@ -290,8 +278,19 @@ def image_slideshow():
     )
 
 def select_target_class_column(df, target):
-    st.write(f'''Current target class: {target}''')
-    if st.checkbox('Specify target class'):
-        default_ix = df.columns.tolist().index(target)
-        selected_target = st.selectbox('Select target feature', df.columns.tolist(), index=default_ix)
-        st.session_state['target'] = selected_target
+    with st.popover('Select target class'):
+        with st.form('target_selection_form'):
+            st.write(f'''Current target class: {target}''')
+            default_ix = df.columns.tolist().index(target)
+            selected_target = st.selectbox('Select target feature', df.columns.tolist(), index=default_ix)
+
+            if st.form_submit_button('Select'):
+                st.session_state['target'] = selected_target
+
+def check_nulls(df):
+    n_nulls = df.isnull().sum().sum()
+
+    if n_nulls == 0:
+        st.session_state['contain_nulls'] = False
+    else:
+        st.session_state['contain_nulls'] = True
