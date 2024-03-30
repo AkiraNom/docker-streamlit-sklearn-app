@@ -15,7 +15,7 @@ import time
 
 import plotly.express as px
 
-from utils import make_sidebar, cover_page, load_dataset, select_ml_algorithm
+from utils import make_sidebar, cover_page, load_dataset, select_target_class_column, select_ml_algorithm
 from plot_func import plot_scatter_matrix, generate_heatmap
 
 warnings.filterwarnings('ignore')
@@ -36,7 +36,10 @@ if st.session_state['dataset'] == None:
     st.warning('Please select dataset to load on the sidebar')
     st.stop()
 
-df, target_class_names = load_dataset(st.session_state['dataset'])
+# df, target_class_names = load_dataset(st.session_state['dataset'])
+df = st.session_state['dataframe']
+target_class_names = st.session_state['target_class_names']
+
 
 st.header('Data', divider='orange')
 if 'target' not in st.session_state:
@@ -49,11 +52,8 @@ cols = st.columns([0.2,0.5,2,0.5])
 with cols[0]:
     st.write('')
 with cols[1]:
-    st.write(f'''Current target class: {st.session_state['target']}''')
-    if st.checkbox('Specify target class'):
-        default_ix = df.columns.tolist().index(st.session_state['target'])
-        selected_target = st.selectbox('Select target feature', df.columns.tolist(), index=default_ix)
-        st.session_state['target'] = selected_target
+    select_target_class_column(df, st.session_state['target'])
+
 with cols[2]:
     st.info('''Default: 'target' or the last column name in dataset''')
 with cols[3]:
@@ -272,7 +272,7 @@ with st.form('Pre-processing'):
                 st.code(f"""
                             Shape of predictor dataset  :   {df.drop(columns=st.session_state['target']).shape} \n
                             Target column name          :   {st.session_state['target']}\n
-                            Number of class             :   {len(np.unique(df[st.session_state['target']]))} \n
+                            Number of classes           :   {len(np.unique(df[st.session_state['target']]))} \n
                             Target class                :   {(*target_class_names,)} \n
                             Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
                             Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
@@ -285,63 +285,7 @@ with st.form('Pre-processing'):
             with cols[2]:
                 st.write('')
 
-st.write(st.session_state)
 
-# # -------- model training ------------------
-# st.header('Model Training', divider='orange')
-
-# st.header('Data preprocessing',divider='orange')
-
-# X = df.drop(columns=[st.session_state['target']]).loc[:,st.session_state['features_included']]
-# Y = df[st.session_state['target']]
-
-# x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'], random_state=st.session_state['random_state'])
-# st.subheader('Data structure')
-# with st.container():
-#     col1, col2, col3 =st.columns([0.5,4,1])
-#     with col1:
-#         st.write('')
-#     with col2:
-#         st.code(f"""
-#                     Shape of predictor dataset  :   {X.shape} \n
-#                     Shape of trainng dataset    :   {x_train.shape} \n
-#                     Shape of testing dataset    :   {x_test.shape} \n
-#                     Number of class             :   {len(np.unique(Y))} \n
-#                     Target column name          :   {st.session_state['target']}\n
-#                     Target class                :   {(*target_class_names,)} \n
-#                     Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
-#                     Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
-#                     Random_state                :   {st.session_state['random_state']}
-#                 """)
-#     with col3:
-#         st.write('')
-
-
-# st.subheader('Model construction')
-
-# start_time = time.time()
-# model = select_ml_algorithm(st.session_state['algorithm'], st.session_state['params'])
-# model.fit(x_train, y_train)
-# elapsed_time = time.time() - start_time
-
-# if model:
-#     col1, col2, col3 = st.columns([0.5,4,1])
-#     with col1:
-#         st.write('')
-#     with col2:
-#         with st.container():
-#             st.code(f'''
-#                     Model algorithm    : {st.session_state['algorithm']} \n
-#                     Model parameters   : {st.session_state['params']}
-#                     ''')
-#             st.success('Model created successfully!', icon="✅")
-#             st.write('')
-#             st.code(f'Elapsed time for Model Training: {elapsed_time:.5f} seconds')
-#     with col3:
-#         st.write('')
-
-# else:
-#     pass
 # # ----------- model prediction --------------------
 # st.header('Model Prediction', divider='orange')
 

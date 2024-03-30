@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit.source_util import get_pages
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
 from sklearn.model_selection import train_test_split,cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
@@ -77,10 +78,15 @@ def optimize_hyperparameters(clf_name):
 
     return params
 
-def initialize_session_state():
-    '''Clear session_state'''
+def clear_session_state():
+    '''Clear all session_states'''
     for key in st.session_state.keys():
         del st.session_state[key]
+
+def initialize_session_state(df):
+    ''' initialize session_state'''
+    st.session_state['features_included'] = df.drop(st.session_state['target'], axis=1).columns.tolist()
+
 
 def make_sidebar():
     with st.sidebar:
@@ -88,7 +94,7 @@ def make_sidebar():
         st.write('')
         st.write('')
 
-        tab1, tab2, tab3 = st.tabs(['Data :clipboard:', 'Model parameters', 'Help'])
+        tab1, tab2 = st.tabs(['Data :clipboard:', 'Help'])
 
         with tab1:
             if 'dataset' not in st.session_state:
@@ -98,10 +104,13 @@ def make_sidebar():
                 selected_dataset = st.selectbox('Select Dataset',('Iris','Wine Dataset','Breast Cancer'))
 
                 if st.form_submit_button('Load Data'):
-                    initialize_session_state()
+                    clear_session_state()
+                    df, target_class_names = load_dataset(selected_dataset)
                     st.session_state['dataset'] = selected_dataset
+                    st.session_state['dataframe'] = df
+                    st.session_state['target_class_names'] = target_class_names
 
-
+                    ## load data and initialize st.session_state
 
             selected_algorithm = st.selectbox('Select Algorithm',('Logistic Regression','Random Forests','GBC','Decision Tree','KNN','Support Vector Machines'))
 
@@ -109,28 +118,29 @@ def make_sidebar():
 
             st.session_state['algorithm'] = selected_algorithm
 
-            if st.checkbox('random_state on'):
-                selected_random_state = st.number_input('Type random state', step=1)
-                st.session_state['random_state'] = selected_random_state
-            else:
-                st.session_state['random_state'] = None
+            # if st.checkbox('random_state on'):
+            #     selected_random_state = st.number_input('Type random state', step=1)
+            #     st.session_state['random_state'] = selected_random_state
+            # else:
+            #     st.session_state['random_state'] = None
+
 
         with tab2:
 
             st.write('')
-            st.subheader('Data Split')
-            with st.container(border=True):
-                st.session_state['test_size'] = st.slider(label='Test Data Size', min_value=0.01, max_value=0.99, value=0.3, step=0.1)
-                st.markdown(f'''<b>Training data </b>: {1- st.session_state['test_size']}</style>''', unsafe_allow_html=True)
-                st.markdown(f'''<b>Testing data </b>: {st.session_state['test_size']}''', unsafe_allow_html=True)
-            st.divider()
-            st.subheader('Tune model parameters')
-            st.session_state['params'] = optimize_hyperparameters(st.session_state['algorithm'])
-
-        with tab3:
-
+            # st.subheader('Data Split')
+            # with st.container(border=True):
+            #     st.session_state['test_size'] = st.slider(label='Test Data Size', min_value=0.01, max_value=0.99, value=0.3, step=0.1)
+            #     st.markdown(f'''<b>Training data </b>: {1- st.session_state['test_size']}</style>''', unsafe_allow_html=True)
+            #     st.markdown(f'''<b>Testing data </b>: {st.session_state['test_size']}''', unsafe_allow_html=True)
+            # st.divider()
+            # st.subheader('Tune model parameters')
+            # st.session_state['params'] = optimize_hyperparameters(st.session_state['algorithm']
             st.write('short description of each dataset')
 
+        st.divider()
+        st.page_link('app.py', label = 'Overview dataset')
+        st.page_link('pages/model_training.py', label='Define machine learning model')
 @st.cache_data
 def load_dataset_description(selected_dataset):
     if selected_dataset=="Iris":
@@ -157,12 +167,12 @@ def cover_page():
             st.write('')
         with icon_cols[1]:
             st.image('./img/scikit-learn.png', width=100)
-            st.write('scikit-learn')
+            st.markdown('''[scikit-learn](https://scikit-learn.org/stable/)''', unsafe_allow_html=True)
         with icon_cols[2]:
             st.write('')
         with icon_cols[3]:
             st.image('./img/Streamlit.png', width=100)
-            st.markdown('&nbsp;&nbsp;&nbsp;streamlit', unsafe_allow_html=True)
+            st.markdown('&nbsp;&nbsp;&nbsp;[streamlit](https://streamlit.io/)', unsafe_allow_html=True)
 
     with cols[2]:
         image_slideshow()
@@ -278,3 +288,10 @@ def image_slideshow():
                         """,
                         height=300,
     )
+
+def select_target_class_column(df, target):
+    st.write(f'''Current target class: {target}''')
+    if st.checkbox('Specify target class'):
+        default_ix = df.columns.tolist().index(target)
+        selected_target = st.selectbox('Select target feature', df.columns.tolist(), index=default_ix)
+        st.session_state['target'] = selected_target
