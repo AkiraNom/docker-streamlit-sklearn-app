@@ -1,21 +1,12 @@
 #import libraries
 import pandas as pd
+import plotly.express as px
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import warnings
-from sklearn import datasets
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, precision_score, recall_score, roc_auc_score
-from sklearn.model_selection import train_test_split
-import scikitplot as skplt
 import streamlit as st
 import time
 
-import plotly.express as px
-
-from utils import make_sidebar, cover_page, load_dataset, select_target_class_column, select_ml_algorithm
+from utils import make_sidebar, cover_page, select_target_class_column
 from plot_func import plot_scatter_matrix, generate_heatmap
 
 warnings.filterwarnings('ignore')
@@ -29,14 +20,31 @@ st.set_page_config(
 make_sidebar()
 cover_page()
 
-if 'dataframe' not in st.session_state:
+
+# st.session_state['test'] = {'fruit': {'include': None,
+#                                       'exclude': None}
+
+#     }
+
+# st.write(st.session_state['test']['fruit']['include'])
+# st.session_state['test']['fruit']['include'] = [2]
+# st.write(st.session_state)
+
+# st.stop()
+
+
+
+
+
+if 'data' not in st.session_state:
     st.write('')
     st.write('')
     st.warning('Please select dataset to load on the sidebar')
     st.stop()
 
-df = st.session_state['dataframe']
-target_class_names = st.session_state['target_class_names']
+df = st.session_state['data']['dataframe']
+target_class_names = st.session_state['data']['target_class_names']
+target = st.session_state['data']['target']
 
 st.header('Data', divider='orange')
 
@@ -44,7 +52,8 @@ cols = st.columns([0.2,0.5,2,0.5])
 with cols[0]:
     st.write('')
 with cols[1]:
-    select_target_class_column(df, st.session_state['target'])
+    select_target_class_column(df, target)
+    target = st.session_state['data']['target']
 
 with cols[2]:
     st.info('''Default: 'target' or the last column name in dataset''')
@@ -72,7 +81,7 @@ with tabs[0]:
                     st.write('')
                 with cols[1]:
                     if st.checkbox('Show target class',key=i):
-                        color = st.session_state['target']
+                        color = target
                     else:
                         color = None
 
@@ -94,53 +103,48 @@ with col1:
     st.subheader('Scatterplot Matrix')
     st.write('Visualization of the relationship between each pair of variables')
 
-    if st.session_state['dataset'] == 'Iris':
-        st.plotly_chart(plot_scatter_matrix(df, st.session_state['target'], target_class_names))
+    if st.session_state['data']['dataset'] == 'Iris':
+        st.plotly_chart(plot_scatter_matrix(df, target, target_class_names))
 
     else:
-        if 'feature_plotted' not in st.session_state:
-            st.session_state['feature_plotted'] = False
-
         st.info('Including more than 8 features makes a graph difficult to observe data points')
         with st.form('Scatter_matrix_plot_large_features'):
-            feature_plotted = st.multiselect('Select features for scatterplot matrix',
-                                        options=df.drop(columns=st.session_state['target']).columns.tolist(),
-                                        default=df.drop(columns=st.session_state['target']).columns.tolist()[:5],
+            selected_features = st.multiselect('Select features for scatterplot matrix',
+                                        options=df.drop(columns=target).columns.tolist(),
+                                        default=df.drop(columns=target).columns.tolist()[:5],
                                         )
-            if st.form_submit_button('Run'):
-                st.session_state['feature_plotted'] = feature_plotted
 
-        if st.session_state['feature_plotted']:
-            st.plotly_chart(plot_scatter_matrix(df, st.session_state['target'], target_class_names, st.session_state['feature_plotted']))
+            if st.form_submit_button('Run'):
+                selected_features_plot = selected_features
+            else:
+                selected_features_plot = None
+
+        if selected_features_plot:
+            st.plotly_chart(plot_scatter_matrix(df, target, target_class_names, selected_features_plot))
 with col2:
     st.subheader('Correlation plot')
     st.write('compute the coreraltion coefficient')
-    st.pyplot(generate_heatmap(df, st.session_state['target']))
+    st.pyplot(generate_heatmap(df, target))
 
 st.header('Data Pre-processing', divider='orange')
 with st.form('Pre-processing'):
 # ----------- Feature selection -----------------------------------
-    if 'features_included' not in st.session_state:
-        st.session_state['features_included'] = df.drop(st.session_state['target'], axis=1).columns.tolist()
-    if 'features_excluded' not in st.session_state:
-        st.session_state['features_excluded'] = None
-
     st.markdown('<b>1. Feature Selection</b>', unsafe_allow_html=True)
     with st.expander('Feature Selection'):
         include_options = st.multiselect(
         'Features included in the model',
-        df.drop(st.session_state['target'], axis=1).columns.tolist(),
-        df.drop(st.session_state['target'], axis=1).columns.tolist()[:10])
+        df.drop(target, axis=1).columns.tolist(),
+        df.drop(target, axis=1).columns.tolist()[:10])
 
-        exclude_options = [x for x in df.drop(st.session_state['target'], axis=1).columns.tolist() if x not in include_options]
+        exclude_options = [x for x in df.drop(target, axis=1).columns.tolist() if x not in include_options]
 
-        st.session_state['features_included'] = include_options
-        st.session_state['features_excluded'] = exclude_options
+        st.session_state['model']['features']['included'] = include_options
+        st.session_state['model']['features']['excluded'] = exclude_options
 
 # -------------- Missing data handling  -------------------------------------
     st.markdown('<b>2. Missing Data Handling</b>', unsafe_allow_html=True)
 
-    if st.session_state['contain_nulls']:
+    if st.session_state['pre_processing']['nulls']['presence']:
         with st.expander('Missing Data Handling'):
             cols = st.columns([0.5,2,0.5,4])
             with cols[0]:
@@ -153,7 +157,7 @@ with st.form('Pre-processing'):
                 st.write('')
             with cols[3]:
                 if st.checkbox('Fill missing values'):
-                    st.session_state['impute'] = True
+                    st.session_state['pre_processing']['nulls']['impute'] = True
                 st.write('Define the strategy to fill the missing values or drop rows')
                 impute_strategies = ('mean','most_frequent','median', 'constant', 'drop')
                 st.write('')
@@ -168,15 +172,15 @@ with st.form('Pre-processing'):
                                                      key=col,
                                                      help='Drop: this option drops a row containing a null value \n'
                                                      )
-                        st.session_state[f'{col}_impute_strategy'] = impute_strategy
+                        st.session_state['pre_processing']['nulls']['features'] = {col : impute_strategy}
                     with form_cols[2]:
                         fill_missing_constant = st.number_input('Constant to fill missing values',
                                                                 key=f'missing_value_constant_input_{col}',
                                                                 help='If imputation strategy constant is selected')
-                        if impute_strategy != 'constant':
-                            st.session_state['impute_fill_constant'] = None
+                        if impute_strategy == 'constant':
+                            st.session_state['pre_processing']['normalization']['constant'] = fill_missing_constant
                         else:
-                            st.session_state['impute_fill_constant'] = fill_missing_constant
+                            pass
                     st.divider()
 
     else:
@@ -186,25 +190,17 @@ with st.form('Pre-processing'):
 #  ----------- Data Normalization -----------------
     st.markdown('<b>3. Data Normalization </b>', unsafe_allow_html=True)
 
-
-    if 'scaler' not in st.session_state:
-        st.session_state['scaler'] = None
-    if 'features_scaled' not in st.session_state:
-        st.session_state['features_scaled'] = None
-    if 'features_encoded' not in st.session_state:
-        st.session_state['features_encoded'] = None
-
     with st.expander('Data Normalization'):
         if st.checkbox('Perform data normalization'):
-            st.session_state['normalization'] = True
-        numeric_features = df.drop(st.session_state['target'], axis=1).select_dtypes(include=np.number).columns.tolist()
-        categorical_features = df.drop(st.session_state['target'], axis=1).select_dtypes(include='object').columns.tolist()
+            st.session_state['pre_processing']['normalization']['scaling'] = True
+        numeric_features = df.drop(target, axis=1).select_dtypes(include=np.number).columns.tolist()
+        categorical_features = df.drop(target, axis=1).select_dtypes(include='object').columns.tolist()
 
         col1, col2 = st.columns(2)
         with col1:
             st.subheader('Numeric features')
-            selected_scaler = st.selectbox('Select normalization method',('Min-Max scaling', 'Z-score (Standardization)','Log scaling', 'None'))
-            st.session_state['scaler'] = selected_scaler
+            selected_scaler = st.selectbox('Select normalization method',('Min-Max scaling', 'Z-score normalization (Standardization)'))
+            st.session_state['pre_processing']['normalization']['scaler'] = selected_scaler
             with st.popover('Explanation: Normalization technique'):
                 st.markdown('''
                             Min-Max scaling and Z-socre normalization (standardization) are the two fundamental techniques for normalization\n
@@ -219,14 +215,11 @@ with st.form('Pre-processing'):
                             |sensitive to outliers|less sensitive to outliers|
                             |suitable for knn, NN|suitable for linear regression, SVM|
 
-                            - <b>Log scaling</b> - It converts data into a logarithmic scale\n
-                            &emsp;&emsp;&emsp;&emsp;$$X_{log} = \log(X)$$
                             ''',
                             unsafe_allow_html=True)
 
             select_features_scaled = st.multiselect('Select feature to be scaled', numeric_features, numeric_features)
-            st.session_state['features_scaled'] = select_features_scaled
-
+            st.session_state['pre_processing']['normalization']['features'] = select_features_scaled
 
         with col2:
             st.subheader('Categorical features')
@@ -234,7 +227,7 @@ with st.form('Pre-processing'):
             if categorical_features:
 
                 select_features_hotencoded = st.multiselect('Select features to be hot encoded', categorical_features, categorical_features)
-                st.session_state['features_encoded'] = select_features_hotencoded
+                st.session_state['pre_processing']['hot_encoding']['features'] = select_features_hotencoded
 
             else:
                 st.write('')
@@ -250,128 +243,31 @@ with st.form('Pre-processing'):
             with cols[0]:
                 st.write('')
             with cols[1]:
-                if st.session_state['contain_nulls'] &(st.session_state['impute']!=True):
-                 st.warning('Null values in your dataset may impact on performance of your machine learning model')
+
+                present_nulls = st.session_state['pre_processing']['nulls']['presence']
+                impute = st.session_state['pre_processing']['nulls']['impute']
+
+                if (present_nulls) & (impute != True):
+                    st.warning('Null values in your dataset may impact on performance of your machine learning model')
+
+                model_includes_features = st.session_state['model']['features']['included']
+                model_excludes_features = st.session_state['model']['features']['excluded']
+                apply_scaler = st.session_state['pre_processing']['normalization']['scaling']
+                scaler = st.session_state['pre_processing']['normalization']['scaler']
+
                 st.code(f"""
-                            Shape of predictor dataset  :   {df.drop(columns=st.session_state['target']).shape} \n
-                            Target column name          :   {st.session_state['target']}\n
-                            Number of classes           :   {len(np.unique(df[st.session_state['target']]))} \n
+                            Shape of predictor dataset  :   {df.drop(columns=target).shape} \n
+                            Target column name          :   {target}\n
+                            Number of classes           :   {len(np.unique(df[target]))} \n
                             Target class                :   {(*target_class_names,)} \n
-                            Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
-                            Features excluded           :   {len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}\n
-                            Missing values              :   {st.session_state['contain_nulls']}\n
-                            Imputation                  :   {st.session_state['impute']}\n
-                            Normalization               :   {st.session_state['normalization']}     {st.session_state['scaler'] if st.session_state['normalization'] else ''}\n
+                            Features included           :   {len(model_includes_features)} features, {model_includes_features}\n
+                            Features excluded           :   {len(model_excludes_features)} features, {model_excludes_features}\n
+                            Missing values              :   {present_nulls}\n
+                            Imputation                  :   {impute}\n
+                            Normalization               :   {apply_scaler}     {scaler if apply_scaler else ''}\n
                         """)
             with cols[2]:
                 st.write('')
-
-
-# # ----------- model prediction --------------------
-# st.header('Model Prediction', divider='orange')
-
-# y_test_preds = model.predict(x_test)
-
-# col1, col2, col3 = st.columns([1.5,0.5,2])
-# with col1:
-#     st.subheader('Confusion Matrix')
-#     st.write('')
-#     conf_mat_fig = plt.figure(figsize=(10,10))
-#     ax1 = conf_mat_fig.add_subplot(111)
-#     skplt.metrics.plot_confusion_matrix(y_test, y_test_preds, ax=ax1, normalize=True)
-#     st.pyplot(conf_mat_fig)
-
-# with col2:
-#     st.write('')
-
-# with col3:
-#     st.subheader('Feature Importance')
-
-#     if st.session_state['algorithm']!='Support Vector Machines':
-
-#         st.write('')
-#         if st.session_state['algorithm'] != 'Logistic Regression':
-#             coefficients = model.feature_importances_
-#         else:
-#             coefficients = model.coef_
-
-#         avg_importance = np.mean(np.abs(coefficients), axis=0)
-#         feature_importance = pd.DataFrame({'Feature': X.columns, 'Importance': avg_importance})
-#         feature_importance = feature_importance.sort_values('Importance', ascending=True)
-
-#         st.plotly_chart(px.bar(feature_importance, x='Importance', y="Feature", orientation='h'), use_container_width=True)
-#     else:
-#         st.write('')
-#         st.write(f'''{st.session_state['algorithm']} don't offer a direct feature importance calculation''')
-
-# # --------- model evaluation ----------------
-# st.header('Model Evaluation', divider='orange')
-
-# # Overall metrics
-# y_test_prob = model.predict_proba(x_test)
-# y_train_pred = model.predict(x_train)
-
-# with st.container():
-#     col1, col2, col3 = st.columns([0.5,4,1])
-#     with col1:
-#         st.write('')
-#     with col2:
-#         st.code(f'''
-#                 Train Accuracy      :   {accuracy_score(y_train, y_train_pred):.5f}\n
-#                 Overall Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
-#                 Overall Precision   :   {precision_score(y_test, y_test_preds, average='macro'):.5f}\n
-#                 Overall Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
-#                 Average AUC         :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
-#                 ''')
-#     with col3:
-#         st.write('')
-
-# st.subheader("Classification Report")
-# with st.expander('Details of classification report'):
-#     with st.container():
-#         col1, col2 = st.columns([2,1])
-#         with col1:
-#             st.markdown('''
-#                     - <b>Accuracy</b> - It represents the ratio of correctly predicted labels to the total predicted labels\n
-#                         &emsp;&emsp;&emsp;&emsp;$$Accuracy = (TP + TN) / (TP + FP + TN + FN)$$
-#                     - <b>Precision (Positive predictive rate)</b>- It represents the ratio of number of actual positive class correctly predicted to
-#                     the total number of predicted positive class\n
-#                         &emsp;&emsp;&emsp;&emsp;$$  Precision = TP / (TP+FP)  $$
-#                     - <b>Recall (Sensitivity)</b> - It represents the ratio of number of actual positive class correctly predicted
-#                     to the total number of actual positive class \n
-#                         &emsp;&emsp;&emsp;&emsp;$$Recall = TP / (TP+FN)$$
-#                     - <b>f1-score</b> - It is a weighted harmonic mean of precision and recall normalized between 0 and 1.
-#                     F score of 1 indicates a perfect balance as precision and the recall are inversely related.
-#                     A high F1 score is useful where both high recall and precision is important. \n
-#                         &emsp;&emsp;&emsp;&emsp;$$F1-Score = 2 (Precision*recall) / (Precision + recall)$$
-#                     - <b>support</b> - It represents the number of actual occurrences of the class in the test data set.
-#                     Imbalanced support in the training data may indicate the need for stratified sampling or rebalancing \n
-#                     ''',
-#                     unsafe_allow_html=True)
-
-#         with col2:
-#             st.write('')
-#             st.markdown('<b>Confusion Matrix </b>', unsafe_allow_html=True)
-#             st.write('')
-#             st.image('https://2.bp.blogspot.com/-EvSXDotTOwc/XMfeOGZ-CVI/AAAAAAAAEiE/oePFfvhfOQM11dgRn9FkPxlegCXbgOF4QCLcBGAs/s1600/confusionMatrxiUpdated.jpg')
-# st.write('')
-# with st.container():
-#     col1, col2, col3 = st.columns([1,3,1])
-#     with col1:
-#         st.write('')
-#     with col2:
-#         st.markdown('<b>Summary statics</b>', unsafe_allow_html=True)
-#         # selected_precision = st.slider('Precision', min_value=1, max_value=10, value=5, step=1)
-#         df_classification_report = pd.DataFrame.from_dict(classification_report(y_test,
-#                                                                                 y_test_preds,
-#                                                                                 target_names=target_class_names,
-#                                                                                 output_dict=True))\
-#                                                                                     .transpose()\
-#                                                                                     .style.format(precision=5)
-#         st.dataframe(df_classification_report, use_container_width=True)
-#     with col3:
-#         st.write('')
-
 
 # # -------------------------------------------------
 # # prediction with your input

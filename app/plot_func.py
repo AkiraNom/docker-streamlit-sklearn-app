@@ -15,7 +15,7 @@ def plot_scatter_matrix(df, target, target_class_names, selected_features=False)
 
     if selected_features:
 
-        df = df.loc[:,(st.session_state['feature_plotted']+[st.session_state['target']])]
+        df = df.loc[:,(selected_features+[st.session_state['data']['target']])]
 
     fig = px.scatter_matrix(
         data_frame=df,

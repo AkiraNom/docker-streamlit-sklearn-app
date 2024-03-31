@@ -1,7 +1,14 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import streamlit as st
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, precision_score, recall_score, roc_auc_score
+from sklearn.pipeline import Pipeline
+import scikitplot as skplt
 import time
 
 from utils import make_sidebar, optimize_hyperparameters, select_ml_algorithm
@@ -23,21 +30,16 @@ if st.session_state['dataset'] == None:
     st.warning('Please select dataset to load on the sidebar')
     st.stop()
 
-df = st.session_state['dataframe']
-target_class_names = st.session_state['target_class_names']
-
-X = df.drop(columns=[st.session_state['target']]).loc[:,st.session_state['features_included']]
-Y = df[st.session_state['target']]
+df = st.session_state['data']['dataframe']
+target_class_names = st.session_state['data']['target_class_names']
+target = st.session_state['data']['target']
+X = df.drop(columns=[st.session_state['data']['target']]).loc[:,st.session_state['model']['features']['included']]
+Y = df[st.session_state['data']['target']]
 
 st.subheader('Data Split')
 
-if 'test_size' not in st.session_state:
-    st.session_state['test_size'] = 0.3
-if 'random_state' not in st.session_state:
-    st.session_state['random_state'] = None
-
 with st.form('Test_size_form'):
-    test_size = st.slider(label='Test Data Size', min_value=0.1, max_value=0.9, value=0.3, step=0.01)
+    selected_test_size = st.slider(label='Test Data Size', min_value=0.1, max_value=0.9, value=0.3, step=0.01)
     st.info('Default: 0.3 (70% for training, 30% for testing)')
     submitted_test_size = st.form_submit_button('Apply')
 
@@ -48,19 +50,21 @@ with st.form('Test_size_form'):
 
     if st.checkbox('random_state on', help=random_state_help_text):
         selected_random_state = st.number_input('Type random state', step=1)
-        st.session_state['random_state'] = selected_random_state
     else:
-        pass
+        selected_random_state = None
 
 if submitted_test_size:
 
-    st.session_state['test_size']  = test_size
+    st.session_state['model']['test_size']  = selected_test_size
+    test_size = st.session_state['model']['test_size']
+    st.session_state['model']['random_state'] = selected_random_state
+    random_state = st.session_state['model']['random_state']
     st.success('Test_size/random state updated successfully!', icon='✅')
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'], random_state=st.session_state['random_state'])
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'], random_state=random_state)
 st.success('Data splitted successfully!',icon="✅")
 st.code(f'''
-        Train, Test data size       :   {int((1-st.session_state['test_size'])*100)}%, {int(st.session_state['test_size']*100)}%\n
+        Train, Test data size       :   {int((1-test_size)*100)}%, {int(test_size*100)}%\n
         Shape of predictor dataset  :   {X.shape} \n
         Shape of trainng dataset    :   {x_train.shape} \n
         Shape of testing dataset    :   {x_test.shape} \n
@@ -76,10 +80,10 @@ with cols[0]:
 with cols[1]:
     st.write('ML algorithm')
     selected_algorithm = st.selectbox('Select Algorithm',('Logistic Regression','Random Forests','GBC','Decision Tree','KNN','Support Vector Machines'))
-    st.session_state['algorithm'] = selected_algorithm
+    st.session_state['model']['algorithm'] = selected_algorithm
 with cols[2]:
     st.write('Tune model parameters')
-    st.session_state['params'] = optimize_hyperparameters(st.session_state['algorithm'])
+    st.session_state['model']['params'] = optimize_hyperparameters(st.session_state['algorithm'])
 
 st.divider()
 
@@ -90,32 +94,35 @@ with st.container():
         st.write('')
     with col2:
         # feature exluded if statement (if not none, show a result)
-        feature_excluded = (f'''{len(st.session_state['features_excluded'])} features, {st.session_state['features_excluded']}'''
-                            if st.session_state['features_excluded'] !=[] else 'None')
+        features_excluded = (f'''
+                            {len(st.session_state['model']['features']['excluded'])} features,
+                            {st.session_state['model']['features']['excluded']}
+                            '''
+                            if st.session_state['model']['features']['excluded'] !=[] else None)
+        features_included = st.session_state['model']['features']['included']
 
         st.code(f"""
                     Shape of predictor dataset  :   {X.shape} \n
-                    Testing data size           :   {st.session_state['test_size']:.2f}\n
+                    Testing data size           :   {test_size:.2f}\n
                     Shape of trainng dataset    :   {x_train.shape} \n
                     Shape of testing dataset    :   {x_test.shape} \n
                     Number of class             :   {len(np.unique(Y))} \n
-                    Target column name          :   {st.session_state['target']}\n
+                    Target column name          :   {target}\n
                     Target class                :   {(*target_class_names,)} \n
-                    Features included           :   {len(st.session_state['features_included'])} features, {st.session_state['features_included']}\n
-                    Features excluded           :   {feature_excluded} \n
-                    Model algorithm             :   {st.session_state['algorithm']} \n
-                    Model parameters            :   {st.session_state['params']}\n
-                    Random_state                :   {st.session_state['random_state']}\n
+                    Features included           :   {len(features_included)} features, {features_included}\n
+                    Features excluded           :   {features_excluded} \n
+                    Model algorithm             :   {st.session_state['model']['algorithm']} \n
+                    Model parameters            :   {st.session_state['model']['params']}\n
+                    Random_state                :   {st.session_state['model']['random_state']}\n
                 """)
     with col3:
         st.write('')
-
 
 st.write('Initiate bulding a model')
 if st.button('Build model'):
     start_time = time.time()
 
-    model = select_ml_algorithm(st.session_state['algorithm'], st.session_state['params'])
+    model = select_ml_algorithm(st.session_state['model']['algorithm'], st.session_state['model']['params'])
     model.fit(x_train, y_train)
     elapsed_time = time.time() - start_time
     st.success('Model created successfully!', icon="✅")
@@ -123,3 +130,109 @@ if st.button('Build model'):
     st.code(f'Elapsed time for Model Training: {elapsed_time:.5f} seconds')
 else:
     st.stop()
+
+
+# ----------- model prediction --------------------
+st.header('Model Prediction', divider='orange')
+
+y_test_preds = model.predict(x_test)
+
+col1, col2, col3 = st.columns([1.5,0.5,2])
+with col1:
+    st.subheader('Confusion Matrix')
+    st.write('')
+    conf_mat_fig = plt.figure(figsize=(10,10))
+    ax1 = conf_mat_fig.add_subplot(111)
+    skplt.metrics.plot_confusion_matrix(y_test, y_test_preds, ax=ax1, normalize=True)
+    st.pyplot(conf_mat_fig)
+
+with col2:
+    st.write('')
+
+with col3:
+    st.subheader('Feature Importance')
+
+    if st.session_state['model']['algorithm']!='Support Vector Machines':
+
+        st.write('')
+        if st.session_state['model']['algorithm'] != 'Logistic Regression':
+            coefficients = model.feature_importances_
+        else:
+            coefficients = model.coef_
+
+        avg_importance = np.mean(np.abs(coefficients), axis=0)
+        feature_importance = pd.DataFrame({'Feature': X.columns, 'Importance': avg_importance})
+        feature_importance = feature_importance.sort_values('Importance', ascending=True)
+
+        st.plotly_chart(px.bar(feature_importance, x='Importance', y="Feature", orientation='h'), use_container_width=True)
+    else:
+        st.write('')
+        st.write(f'''{st.session_state['model']['algorithm']} don't offer a direct feature importance calculation''')
+
+# --------- model evaluation ----------------
+st.header('Model Evaluation', divider='orange')
+
+# Overall metrics
+y_test_prob = model.predict_proba(x_test)
+y_train_pred = model.predict(x_train)
+
+with st.container():
+    col1, col2, col3 = st.columns([0.5,4,1])
+    with col1:
+        st.write('')
+    with col2:
+        st.code(f'''
+                Train Accuracy      :   {accuracy_score(y_train, y_train_pred):.5f}\n
+                Overall Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
+                Overall Precision   :   {precision_score(y_test, y_test_preds, average='macro'):.5f}\n
+                Overall Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
+                Average AUC         :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
+                ''')
+    with col3:
+        st.write('')
+
+st.subheader("Classification Report")
+with st.expander('Details of classification report'):
+    with st.container():
+        col1, col2 = st.columns([2,1])
+        with col1:
+            st.markdown('''
+                    - <b>Accuracy</b> - It represents the ratio of correctly predicted labels to the total predicted labels\n
+                        &emsp;&emsp;&emsp;&emsp;$$Accuracy = (TP + TN) / (TP + FP + TN + FN)$$
+                    - <b>Precision (Positive predictive rate)</b>- It represents the ratio of number of actual positive class correctly predicted to
+                    the total number of predicted positive class\n
+                        &emsp;&emsp;&emsp;&emsp;$$  Precision = TP / (TP+FP)  $$
+                    - <b>Recall (Sensitivity)</b> - It represents the ratio of number of actual positive class correctly predicted
+                    to the total number of actual positive class \n
+                        &emsp;&emsp;&emsp;&emsp;$$Recall = TP / (TP+FN)$$
+                    - <b>f1-score</b> - It is a weighted harmonic mean of precision and recall normalized between 0 and 1.
+                    F score of 1 indicates a perfect balance as precision and the recall are inversely related.
+                    A high F1 score is useful where both high recall and precision is important. \n
+                        &emsp;&emsp;&emsp;&emsp;$$F1-Score = 2 (Precision*recall) / (Precision + recall)$$
+                    - <b>support</b> - It represents the number of actual occurrences of the class in the test data set.
+                    Imbalanced support in the training data may indicate the need for stratified sampling or rebalancing \n
+                    ''',
+                    unsafe_allow_html=True)
+
+        with col2:
+            st.write('')
+            st.markdown('<b>Confusion Matrix </b>', unsafe_allow_html=True)
+            st.write('')
+            st.image('https://2.bp.blogspot.com/-EvSXDotTOwc/XMfeOGZ-CVI/AAAAAAAAEiE/oePFfvhfOQM11dgRn9FkPxlegCXbgOF4QCLcBGAs/s1600/confusionMatrxiUpdated.jpg')
+st.write('')
+with st.container():
+    col1, col2, col3 = st.columns([1,3,1])
+    with col1:
+        st.write('')
+    with col2:
+        st.markdown('<b>Summary statics</b>', unsafe_allow_html=True)
+        # selected_precision = st.slider('Precision', min_value=1, max_value=10, value=5, step=1)
+        df_classification_report = pd.DataFrame.from_dict(classification_report(y_test,
+                                                                                y_test_preds,
+                                                                                target_names=target_class_names,
+                                                                                output_dict=True))\
+                                                                                    .transpose()\
+                                                                                    .style.format(precision=5)
+        st.dataframe(df_classification_report, use_container_width=True)
+    with col3:
+        st.write('')

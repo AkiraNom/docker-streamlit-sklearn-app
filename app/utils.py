@@ -4,12 +4,9 @@ import streamlit.components.v1 as components
 from streamlit.source_util import get_pages
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
-from sklearn.model_selection import train_test_split,cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
+from sklearn.model_selection import cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import scale
-from sklearn.metrics import roc_auc_score,roc_curve
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix,accuracy_score
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
@@ -87,20 +84,54 @@ def clear_session_state():
     for key in st.session_state.keys():
         del st.session_state[key]
 
-def initialize_session_state(df):
+def initialize_session_state():
     ''' initialize session_state'''
+    st.session_state['data'] = {'dataset'   : None,
+                                'dataframe' : None,
+                                'target'    : None,
+                                'target_class_names' : None
+                                }
+    st.session_state['pre_processing'] = {'nulls'           : {
+                                                                'presence'   :  False,
+                                                                'impute'     :  False,
+                                                                'features'   :  {}
+                                                                },
+                                          'normalization'   : {
+                                                                'scaling'    :  False,
+                                                                'scaler'     :  'MinMaxScaler',
+                                                                'features'   :  '',
+                                                                'constant'   :  '',
+                                                               },
+                                          'hot_encoding'    : {
+                                                                'scaling'    :  False,
+                                                                'features'   :  ''
+                                                               },
+                                          }
+    st.session_state['model'] = {'algorithm'    :   '',
+                                 'params'       :   {},
+                                 'test_size'    :   None,
+                                 'features'     :   {'included' : [],
+                                                     'excluded' : None
+                                                    },
+                                 'trained_model':   ''
+                                }
 
+def default_target_class_col(df):
+    ''' set default target class col
+
+        if 'target' in the column:
+            use it
+        else:
+            take the last column as the target class col
+
+        to change the target class col -> select_target_class_column(df, target)
+    '''
     if 'target' in df.columns.tolist():
-        st.session_state['target'] = 'target'
+        st.session_state['data']['target'] = 'target'
+        return  'target'
     else:
-        st.session_state['target'] = df.columns.tolist()[-1]
-
-    check_nulls(df)
-    st.session_state['impute'] = False
-    st.session_state['normalization'] = False
-    st.session_state['features_included'] = df.drop(st.session_state['target'], axis=1).columns.tolist()
-    st.session_state['features_excluded'] = None
-    st.session_state['model'] = False
+        st.session_state['data']['target'] = df.columns.tolist()[-1]
+        return df.columns.tolist()[-1]
 
 
 def make_sidebar():
@@ -109,19 +140,23 @@ def make_sidebar():
         st.write('')
 
         st.subheader('Load Data')
-        if 'dataset' not in st.session_state:
-            st.session_state['dataset'] = None
         with st.form('Dataset'):
 
             selected_dataset = st.selectbox('Select Dataset',('Iris','Wine Dataset','Breast Cancer'))
 
             if st.form_submit_button('Load Data'):
                 clear_session_state()
+                initialize_session_state()
                 df, target_class_names = load_dataset(selected_dataset)
-                st.session_state['dataset'] = selected_dataset
-                st.session_state['dataframe'] = df
-                st.session_state['target_class_names'] = target_class_names
-                initialize_session_state(df)
+                st.session_state['data'] = {
+                                            'dataset'               : selected_dataset,
+                                            'dataframe'             : df,
+                                            'target'                : default_target_class_col(df),
+                                            'target_class_names'    : target_class_names,
+                                            'features'              : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
+                                            }
+                st.session_state['model']['features']['included'] = df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
+                check_nulls(df)
 
         st.write('')
         st.subheader('Navigation Menu', divider='orange')
@@ -177,7 +212,6 @@ def cover_page():
 
     with cols[2]:
         image_slideshow()
-
 
 def image_slideshow():
     '''
@@ -298,12 +332,13 @@ def select_target_class_column(df, target):
             selected_target = st.selectbox('Select target feature', df.columns.tolist(), index=default_ix)
 
             if st.form_submit_button('Select'):
-                st.session_state['target'] = selected_target
+                st.session_state['data']['target'] = selected_target
+
 
 def check_nulls(df):
     n_nulls = df.isnull().sum().sum()
 
-    if n_nulls == 0:
-        st.session_state['contain_nulls'] = False
+    if n_nulls != 0:
+        st.session_state['pre_processing']['nulls']['presence'] = True
     else:
-        st.session_state['contain_nulls'] = True
+        pass
