@@ -29,7 +29,7 @@ st.set_page_config(
 make_sidebar()
 cover_page()
 
-if st.session_state['dataset'] == None:
+if 'dataframe' not in st.session_state:
     st.write('')
     st.write('')
     st.warning('Please select dataset to load on the sidebar')

@@ -28,13 +28,6 @@ def plot_scatter_matrix(df, target, target_class_names, selected_features=False)
 
     return fig
 
-
-
-
-
-
-
-
 @st.cache_data
 def generate_heatmap(df, target):
     corr = df.drop(target,axis=1).corr()

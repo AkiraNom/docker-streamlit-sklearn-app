@@ -14,6 +14,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.svm import SVC
+import time
 
 @st.cache_data
 def load_dataset(selected_dataset):
@@ -78,6 +79,9 @@ def optimize_hyperparameters(clf_name):
 
     return params
 
+def clear_cache():
+    st.cache_data.clear()
+
 def clear_session_state():
     '''Clear all session_states'''
     for key in st.session_state.keys():
@@ -92,10 +96,11 @@ def initialize_session_state(df):
         st.session_state['target'] = df.columns.tolist()[-1]
 
     check_nulls(df)
-    st.session_state['impute'] =False
+    st.session_state['impute'] = False
     st.session_state['normalization'] = False
     st.session_state['features_included'] = df.drop(st.session_state['target'], axis=1).columns.tolist()
     st.session_state['features_excluded'] = None
+    st.session_state['model'] = False
 
 
 def make_sidebar():
@@ -103,30 +108,40 @@ def make_sidebar():
         st.title('💎 Multilabel Machine Learning Classification App')
         st.write('')
 
-        tab1, tab2 = st.tabs(['Data :clipboard:', 'Help'])
+        st.subheader('Load Data')
+        if 'dataset' not in st.session_state:
+            st.session_state['dataset'] = None
+        with st.form('Dataset'):
 
-        with tab1:
-            if 'dataset' not in st.session_state:
-                st.session_state['dataset'] = None
-            with st.form('Dataset'):
+            selected_dataset = st.selectbox('Select Dataset',('Iris','Wine Dataset','Breast Cancer'))
 
-                selected_dataset = st.selectbox('Select Dataset',('Iris','Wine Dataset','Breast Cancer'))
+            if st.form_submit_button('Load Data'):
+                clear_session_state()
+                df, target_class_names = load_dataset(selected_dataset)
+                st.session_state['dataset'] = selected_dataset
+                st.session_state['dataframe'] = df
+                st.session_state['target_class_names'] = target_class_names
+                initialize_session_state(df)
 
-                if st.form_submit_button('Load Data'):
-                    clear_session_state()
-                    df, target_class_names = load_dataset(selected_dataset)
-                    st.session_state['dataset'] = selected_dataset
-                    st.session_state['dataframe'] = df
-                    st.session_state['target_class_names'] = target_class_names
-                    initialize_session_state(df)
-
-        with tab2:
-            st.write('')
-            st.write('short description of each dataset')
-
+        st.write('')
         st.subheader('Navigation Menu', divider='orange')
         st.page_link('app.py', label = 'Overview dataset')
         st.page_link('pages/model_training.py', label='Build machine learning model')
+
+
+        st.divider()
+        st.write('Clear all')
+        with st.container():
+            cols = st.columns([0.1,1])
+            with cols[0]:
+                st.write('')
+            with cols[1]:
+                if st.button('Clear'):
+                    clear_cache()
+                    clear_session_state()
+                    success = st.success('All data cleared')
+                    time.sleep(1)
+                    success.empty()
 
 @st.cache_data
 def load_dataset_description(selected_dataset):
