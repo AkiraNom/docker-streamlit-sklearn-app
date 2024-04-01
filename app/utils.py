@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
 from streamlit.source_util import get_pages
@@ -89,27 +90,30 @@ def initialize_session_state():
     st.session_state['data'] = {'dataset'   : None,
                                 'dataframe' : None,
                                 'target'    : None,
-                                'target_class_names' : None
+                                'target_class_names' : None,
+                                'features'           : None,
+                                'num_features'       : None,
+                                'cat_features'       : None
                                 }
     st.session_state['pre_processing'] = {'nulls'           : {
                                                                 'presence'   :  False,
                                                                 'impute'     :  False,
-                                                                'features'   :  {}
+                                                                'strategy'   :  {}
                                                                 },
                                           'normalization'   : {
                                                                 'scaling'    :  False,
                                                                 'scaler'     :  'MinMaxScaler',
                                                                 'features'   :  '',
-                                                                'constant'   :  '',
                                                                },
                                           'hot_encoding'    : {
-                                                                'scaling'    :  False,
+                                                                'encoding'    :  False,
                                                                 'features'   :  ''
                                                                },
                                           }
     st.session_state['model'] = {'algorithm'    :   '',
                                  'params'       :   {},
-                                 'test_size'    :   None,
+                                 'test_size'    :   0.3,
+                                 'random_state' :   None,
                                  'features'     :   {'included' : [],
                                                      'excluded' : None
                                                     },
@@ -133,6 +137,13 @@ def default_target_class_col(df):
         st.session_state['data']['target'] = df.columns.tolist()[-1]
         return df.columns.tolist()[-1]
 
+def check_feature_dtype(df, target):
+
+    num_features = df.drop(target, axis=1).select_dtypes(include=np.number).columns.tolist()
+    cat_features = df.drop(target, axis=1).select_dtypes(exclude=np.number).columns.tolist()
+
+    st.session_state['data']['cat_features'] = cat_features
+    st.session_state['data']['num_features'] = num_features
 
 def make_sidebar():
     with st.sidebar:
@@ -156,6 +167,7 @@ def make_sidebar():
                                             'features'              : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
                                             }
                 st.session_state['model']['features']['included'] = df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
+                check_feature_dtype(df, st.session_state['data']['target'])
                 check_nulls(df)
 
         st.write('')
@@ -333,6 +345,7 @@ def select_target_class_column(df, target):
 
             if st.form_submit_button('Select'):
                 st.session_state['data']['target'] = selected_target
+                check_feature_dtype(df,target)
 
 
 def check_nulls(df):
@@ -342,3 +355,53 @@ def check_nulls(df):
         st.session_state['pre_processing']['nulls']['presence'] = True
     else:
         pass
+
+def warning_dataset_load():
+
+    if 'data' not in st.session_state:
+        st.write('')
+        st.write('')
+        st.warning('Please select dataset to load on the sidebar')
+        st.stop()
+
+def define_pipeline_sequence():
+    pipeline_sequence =[]
+
+    if st.clear_session_state['pre_processing']['impute']:
+        pipeline_sequence.append('Impute', )
+
+
+
+    {'nulls'           : {
+                        'presence'   :  False,
+                        'impute'     :  False,
+                        'features'   :  {}
+                        },
+    'normalization'   : {
+                        'scaling'    :  False,
+                        'scaler'     :  'MinMaxScaler',
+                        'features'   :  '',
+                        'constant'   :  '',
+                        },
+    'hot_encoding'    : {
+                        'scaling'    :  False,
+                        'features'   :  ''
+                        },}
+
+def create_impute_strategy_selector(missing_val_feature_list, key):
+    '''
+        Create select box to chose strategy for filling missing values
+    '''
+
+    if missing_val_feature_list:
+        if key == 'num':
+            impute_strategies = ('mean','median', 'drop','none')
+        else:
+            # categorical
+            impute_strategies = ('most_frequent', 'drop','none')
+
+        st.code(missing_val_feature_list)
+        st.selectbox('Impute method', options=impute_strategies, key=key)
+
+    else:
+        st.write('There is no missing values')

@@ -11,7 +11,7 @@ from sklearn.pipeline import Pipeline
 import scikitplot as skplt
 import time
 
-from utils import make_sidebar, optimize_hyperparameters, select_ml_algorithm
+from utils import make_sidebar, warning_dataset_load, optimize_hyperparameters, select_ml_algorithm
 
 st.set_page_config(
     # page_icon="🧊",
@@ -20,15 +20,13 @@ st.set_page_config(
 )
 
 make_sidebar()
+st.title('Building ML Model')
+st.write('')
 
 # -------- model training ------------------
 st.header('Model Training', divider='orange')
 
-if st.session_state['dataset'] == None:
-    st.write('')
-    st.write('')
-    st.warning('Please select dataset to load on the sidebar')
-    st.stop()
+warning_dataset_load()
 
 df = st.session_state['data']['dataframe']
 target_class_names = st.session_state['data']['target_class_names']
@@ -56,13 +54,12 @@ with st.form('Test_size_form'):
 if submitted_test_size:
 
     st.session_state['model']['test_size']  = selected_test_size
-    test_size = st.session_state['model']['test_size']
     st.session_state['model']['random_state'] = selected_random_state
-    random_state = st.session_state['model']['random_state']
     st.success('Test_size/random state updated successfully!', icon='✅')
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=st.session_state['test_size'], random_state=random_state)
-st.success('Data splitted successfully!',icon="✅")
+test_size = st.session_state['model']['test_size']
+random_state = st.session_state['model']['random_state']
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=random_state)
 st.code(f'''
         Train, Test data size       :   {int((1-test_size)*100)}%, {int(test_size*100)}%\n
         Shape of predictor dataset  :   {X.shape} \n
@@ -83,7 +80,7 @@ with cols[1]:
     st.session_state['model']['algorithm'] = selected_algorithm
 with cols[2]:
     st.write('Tune model parameters')
-    st.session_state['model']['params'] = optimize_hyperparameters(st.session_state['algorithm'])
+    st.session_state['model']['params'] = optimize_hyperparameters(st.session_state['model']['algorithm'])
 
 st.divider()
 
@@ -132,8 +129,8 @@ else:
     st.stop()
 
 
-# ----------- model prediction --------------------
-st.header('Model Prediction', divider='orange')
+# ----------- model evaluation --------------------
+st.header('Model Evaluation', divider='orange')
 
 y_test_preds = model.predict(x_test)
 
@@ -169,8 +166,8 @@ with col3:
         st.write('')
         st.write(f'''{st.session_state['model']['algorithm']} don't offer a direct feature importance calculation''')
 
-# --------- model evaluation ----------------
-st.header('Model Evaluation', divider='orange')
+# --------- model performance ----------------
+st.subheader('Overall model perfomance')
 
 # Overall metrics
 y_test_prob = model.predict_proba(x_test)
@@ -183,9 +180,9 @@ with st.container():
     with col2:
         st.code(f'''
                 Train Accuracy      :   {accuracy_score(y_train, y_train_pred):.5f}\n
-                Overall Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
-                Overall Precision   :   {precision_score(y_test, y_test_preds, average='macro'):.5f}\n
-                Overall Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
+                Test Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
+                Test Precision   :   {precision_score(y_test, y_test_preds, average='macro'):.5f}\n
+                Test Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
                 Average AUC         :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
                 ''')
     with col3:
