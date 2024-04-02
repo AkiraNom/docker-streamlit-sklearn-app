@@ -6,7 +6,7 @@ import warnings
 import streamlit as st
 import time
 
-from utils import make_sidebar, cover_page, warning_dataset_load, select_target_class_column, create_impute_strategy_selector
+from utils import make_sidebar, cover_page, warning_dataset_load, select_target_class_column, insert_nan_values, create_impute_strategy_selector
 from plot_func import plot_scatter_matrix, generate_heatmap
 
 warnings.filterwarnings('ignore')
@@ -76,36 +76,52 @@ with tabs[1]:
     st.dataframe(df, use_container_width=True, hide_index=True)
 
 st.header('Data Inspection', divider='orange')
+presence_nulls = st.session_state['pre_processing']['nulls']['presence']
 
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader('Scatterplot Matrix')
-    st.write('Visualization of the relationship between each pair of variables')
+if presence_nulls:
+    st.warning('The dataset contains null values')
+else:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader('Scatterplot Matrix')
+        st.write('Visualization of the relationship between each pair of variables')
 
-    if st.session_state['data']['dataset'] == 'Iris':
-        st.plotly_chart(plot_scatter_matrix(df, target, target_class_names))
+        if st.session_state['data']['dataset'] == 'Iris':
+            st.plotly_chart(plot_scatter_matrix(df, target, target_class_names))
 
-    else:
-        st.info('Including more than 8 features makes a graph difficult to observe data points')
-        with st.form('Scatter_matrix_plot_large_features'):
-            selected_features = st.multiselect('Select features for scatterplot matrix',
-                                        options=df.drop(columns=target).columns.tolist(),
-                                        default=df.drop(columns=target).columns.tolist()[:5],
-                                        )
+        else:
+            st.info('Including more than 8 features makes a graph difficult to observe data points')
+            with st.form('Scatter_matrix_plot_large_features'):
+                selected_features = st.multiselect('Select features for scatterplot matrix',
+                                            options=df.drop(columns=target).columns.tolist(),
+                                            default=df.drop(columns=target).columns.tolist()[:5],
+                                            )
 
-            if st.form_submit_button('Run'):
-                selected_features_plot = selected_features
-            else:
-                selected_features_plot = None
+                if st.form_submit_button('Run'):
+                    selected_features_plot = selected_features
+                else:
+                    selected_features_plot = None
 
-        if selected_features_plot:
-            st.plotly_chart(plot_scatter_matrix(df, target, target_class_names, selected_features_plot))
-with col2:
-    st.subheader('Correlation plot')
-    st.write('compute the coreraltion coefficient')
-    st.pyplot(generate_heatmap(df, target))
+            if selected_features_plot:
+                st.plotly_chart(plot_scatter_matrix(df, target, target_class_names, selected_features_plot))
+    with col2:
+        st.subheader('Correlation plot')
+        st.write('compute the coreraltion coefficient')
+        st.pyplot(generate_heatmap(df, target))
+
 
 st.header('Data Pre-processing', divider='orange')
+
+# --------- Insert nan values in the dataset -------------------
+cols = st.columns([0.1,2,1,1])
+with cols[1]:
+    st.info('The original dataset does not contain nan values.  \n The button randomly insert np.nan values in the dataset')
+with cols[2]:
+    st.write('')
+    if st.button('Insert NaN'):
+        df = insert_nan_values(df,target)
+
+
 with st.form('Pre-processing'):
 # ----------- Feature selection -----------------------------------
     st.markdown('<b>1. Feature Selection</b>', unsafe_allow_html=True)
@@ -125,7 +141,7 @@ with st.form('Pre-processing'):
 
     perform_imputation = False
 
-    if st.session_state['pre_processing']['nulls']['presence']:
+    if presence_nulls:
         with st.expander('Missing Data Handling'):
             cols = st.columns([0.5,2,0.5,4])
             with cols[0]:
@@ -142,7 +158,7 @@ with st.form('Pre-processing'):
                 st.write('Define the strategy to fill the missing values or drop rows')
                 st.code('''
                         For categorical features,
-                            strategy    :   'most_frequent' or 'drop
+                            strategy    :   'most_frequent' or 'drop'
                         For numerical features,
                             strategy    :   'mean', 'median', 'drop'
                         ''')
@@ -248,10 +264,9 @@ with st.form('Pre-processing'):
                 st.write('')
             with cols[1]:
 
-                present_nulls = st.session_state['pre_processing']['nulls']['presence']
                 impute = st.session_state['pre_processing']['nulls']['impute']
 
-                if (present_nulls) & (impute != True) :
+                if (presence_nulls) & (impute != True) :
                     st.warning('Null values in your dataset may impact on performance of your machine learning model')
 
                 model_includes_features = st.session_state['model']['features']['included']
@@ -266,7 +281,7 @@ with st.form('Pre-processing'):
                             Target class                :   {(*target_class_names,)} \n
                             Features included           :   {len(model_includes_features)} features, {model_includes_features}\n
                             Features excluded           :   {len(model_excludes_features)} features, {model_excludes_features}\n
-                            Missing values              :   {present_nulls}\n
+                            Missing values              :   {presence_nulls}\n
                             Imputation                  :   {impute}\n
                             Normalization               :   {apply_scaler}     {scaler if apply_scaler else ''}\n
                         """)

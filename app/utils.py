@@ -6,6 +6,7 @@ from streamlit.source_util import get_pages
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
 from sklearn.model_selection import cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
+from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neighbors import KNeighborsClassifier
@@ -87,38 +88,43 @@ def clear_session_state():
 
 def initialize_session_state():
     ''' initialize session_state'''
-    st.session_state['data'] = {'dataset'   : None,
-                                'dataframe' : None,
-                                'target'    : None,
-                                'target_class_names' : None,
-                                'features'           : None,
-                                'num_features'       : None,
-                                'cat_features'       : None
-                                }
-    st.session_state['pre_processing'] = {'nulls'           : {
-                                                                'presence'   :  False,
-                                                                'impute'     :  False,
-                                                                'strategy'   :  {}
-                                                                },
-                                          'normalization'   : {
-                                                                'scaling'    :  False,
-                                                                'scaler'     :  'MinMaxScaler',
-                                                                'features'   :  '',
-                                                               },
-                                          'hot_encoding'    : {
-                                                                'encoding'    :  False,
-                                                                'features'   :  ''
-                                                               },
-                                          }
-    st.session_state['model'] = {'algorithm'    :   '',
-                                 'params'       :   {},
-                                 'test_size'    :   0.3,
-                                 'random_state' :   None,
-                                 'features'     :   {'included' : [],
-                                                     'excluded' : None
-                                                    },
-                                 'trained_model':   ''
-                                }
+    st.session_state['data'] = {
+        'dataset' : None,
+        'dataframe' : None,
+        'target' : None,
+        'target_class_names' : None,
+        'features' : None,
+        'num_features' : None,
+        'cat_features' : None,
+        'insert_nulls' : False
+        }
+    st.session_state['pre_processing'] = {
+        'nulls' : {
+                'presence' : False,
+                'impute' : False,
+                'strategy' : {}
+                },
+        'normalization' : {
+                'scaling' : False,
+                'scaler' : 'MinMaxScaler',
+                'features' : '',
+                },
+        'hot_encoding' : {
+                'encoding' : False,
+                'features' : ''
+                },
+        }
+    st.session_state['model'] = {
+        'algorithm' : '',
+        'params' : {},
+        'test_size' : 0.3,
+        'random_state' : None,
+        'features' : {
+            'included' : [],
+            'excluded' : None
+            },
+        'trained_model' : ''
+    }
 
 def default_target_class_col(df):
     ''' set default target class col
@@ -160,11 +166,11 @@ def make_sidebar():
                 initialize_session_state()
                 df, target_class_names = load_dataset(selected_dataset)
                 st.session_state['data'] = {
-                                            'dataset'               : selected_dataset,
-                                            'dataframe'             : df,
-                                            'target'                : default_target_class_col(df),
-                                            'target_class_names'    : target_class_names,
-                                            'features'              : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
+                                            'dataset' : selected_dataset,
+                                            'dataframe' : df,
+                                            'target' : default_target_class_col(df),
+                                            'target_class_names' : target_class_names,
+                                            'features' : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
                                             }
                 st.session_state['model']['features']['included'] = df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
                 check_feature_dtype(df, st.session_state['data']['target'])
@@ -364,44 +370,43 @@ def warning_dataset_load():
         st.warning('Please select dataset to load on the sidebar')
         st.stop()
 
-def define_pipeline_sequence():
-    pipeline_sequence =[]
-
-    if st.clear_session_state['pre_processing']['impute']:
-        pipeline_sequence.append('Impute', )
-
-
-
-    {'nulls'           : {
-                        'presence'   :  False,
-                        'impute'     :  False,
-                        'features'   :  {}
-                        },
-    'normalization'   : {
-                        'scaling'    :  False,
-                        'scaler'     :  'MinMaxScaler',
-                        'features'   :  '',
-                        'constant'   :  '',
-                        },
-    'hot_encoding'    : {
-                        'scaling'    :  False,
-                        'features'   :  ''
-                        },}
-
 def create_impute_strategy_selector(missing_val_feature_list, key):
     '''
         Create select box to chose strategy for filling missing values
     '''
-
     if missing_val_feature_list:
         if key == 'num':
-            impute_strategies = ('mean','median', 'drop','none')
+            impute_strategies = ('mean','median', 'drop')
         else:
             # categorical
-            impute_strategies = ('most_frequent', 'drop','none')
+            impute_strategies = ('most_frequent', 'drop')
 
         st.code(missing_val_feature_list)
         st.selectbox('Impute method', options=impute_strategies, key=key)
 
     else:
         st.write('There is no missing values')
+
+
+def define_pipeline_sequence():
+    pipeline_sequence =[]
+
+    if st.session_state['pre_processing']['nulls']['impute']:
+        if st.session_state['pre_processing']['nulls']['strategy'] != 'drop':
+            strategy = st.session_state['pre_processing']['nulls']['strategy']
+            st.write(f'impute strategy : {strategy}')
+            # pipeline_sequence.append('Impute', SimpleImputer(missing_values=np.nan, strategy=))
+
+def insert_nan_values(df, target):
+    '''
+        randomly replace 10% of data with nan to examine the missing value imputation
+    '''
+
+    cols = df.drop(target, axis=1).columns.tolist()
+    for idx in cols:
+        df[idx] = [item if np.random.rand() < 0.9
+                                    else None for item in df[idx]]
+
+    # update  the session_state['pre_processing']['nulls']['presence'] -> True
+    check_nulls(df)
+    return df

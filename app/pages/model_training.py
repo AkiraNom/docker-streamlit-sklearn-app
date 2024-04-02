@@ -39,17 +39,26 @@ st.subheader('Data Split')
 with st.form('Test_size_form'):
     selected_test_size = st.slider(label='Test Data Size', min_value=0.1, max_value=0.9, value=0.3, step=0.01)
     st.info('Default: 0.3 (70% for training, 30% for testing)')
-    submitted_test_size = st.form_submit_button('Apply')
 
     random_state_help_text = '''
     Control reproducible output across multiple function calls\n
     Check further in [scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html)
     '''
 
-    if st.checkbox('random_state on', help=random_state_help_text):
+    cols = st.columns([1,2,2])
+    with cols[0]:
+        st.write('')
+        if st.checkbox('random_state on', help=random_state_help_text):
+            selected_random_state = True
+        else:
+            selected_random_state = False
+    with cols[1]:
         selected_random_state = st.number_input('Type random state', step=1)
-    else:
-        selected_random_state = None
+    with cols[2]:
+        st.write('')
+
+    st.write('')
+    submitted_test_size = st.form_submit_button('Apply')
 
 if submitted_test_size:
 
@@ -90,13 +99,15 @@ with st.container():
     with col1:
         st.write('')
     with col2:
-        # feature exluded if statement (if not none, show a result)
-        features_excluded = (f'''
-                            {len(st.session_state['model']['features']['excluded'])} features,
-                            {st.session_state['model']['features']['excluded']}
-                            '''
-                            if st.session_state['model']['features']['excluded'] !=[] else None)
         features_included = st.session_state['model']['features']['included']
+        if st.session_state['model']['features']['excluded'] is None:
+            features_excluded = None
+        else:
+            features_excluded = (f'''
+                                {len(st.session_state['model']['features']['excluded'])} features,
+                                {st.session_state['model']['features']['excluded']}
+                                ''')
+
 
         st.code(f"""
                     Shape of predictor dataset  :   {X.shape} \n
@@ -179,11 +190,11 @@ with st.container():
         st.write('')
     with col2:
         st.code(f'''
-                Train Accuracy      :   {accuracy_score(y_train, y_train_pred):.5f}\n
+                Train Accuracy   :   {accuracy_score(y_train, y_train_pred):.5f}\n
                 Test Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
                 Test Precision   :   {precision_score(y_test, y_test_preds, average='macro'):.5f}\n
                 Test Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
-                Average AUC         :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
+                Average AUC      :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
                 ''')
     with col3:
         st.write('')
