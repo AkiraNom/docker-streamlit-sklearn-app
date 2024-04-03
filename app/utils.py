@@ -98,20 +98,19 @@ def initialize_session_state():
         'cat_features' : None,
         'insert_nulls' : False
         }
-    st.session_state['pre_processing'] = {
+    st.session_state['preprocessing'] = {
         'nulls' : {
                 'presence' : False,
-                'impute' : False,
-                'strategy' : {}
+                'strategy' : {'num_features' : 'mean',
+                              'cat_features' : 'most_frequent'}
                 },
         'normalization' : {
                 'scaling' : False,
                 'scaler' : 'MinMaxScaler',
                 'features' : '',
                 },
-        'hot_encoding' : {
-                'encoding' : False,
-                'features' : ''
+        'encoding' : {
+                'encoder' : 'OneHotEncoder'
                 },
         }
     st.session_state['model'] = {
@@ -358,7 +357,7 @@ def check_nulls(df):
     n_nulls = df.isnull().sum().sum()
 
     if n_nulls != 0:
-        st.session_state['pre_processing']['nulls']['presence'] = True
+        st.session_state['preprocessing']['nulls']['presence'] = True
     else:
         pass
 
@@ -370,33 +369,51 @@ def warning_dataset_load():
         st.warning('Please select dataset to load on the sidebar')
         st.stop()
 
-def create_impute_strategy_selector(missing_val_feature_list, key):
+def create_impute_strategy_selector(key):
     '''
         Create select box to chose strategy for filling missing values
     '''
-    if missing_val_feature_list:
-        if key == 'num':
-            impute_strategies = ('mean','median', 'drop')
-        else:
-            # categorical
-            impute_strategies = ('most_frequent', 'drop')
-
-        st.code(missing_val_feature_list)
-        st.selectbox('Impute method', options=impute_strategies, key=key)
-
+    if key == 'num':
+        impute_strategies = ('mean','median')
+        return st.selectbox('Impute method', options=impute_strategies, key=key)
     else:
-        st.write('There is no missing values')
+        with st.container():
+        # categorical
+            st.code('''impute method: 'most_frequent' ''')
+            st.info('It replaces missing using the most frequent value along each column')
+            return 'most_frequent'
 
 
-def define_pipeline_sequence():
-    pipeline_sequence =[]
 
-    if st.session_state['pre_processing']['nulls']['impute']:
-        if st.session_state['pre_processing']['nulls']['strategy'] != 'drop':
-            strategy = st.session_state['pre_processing']['nulls']['strategy']
-            st.write(f'impute strategy : {strategy}')
-            # pipeline_sequence.append('Impute', SimpleImputer(missing_values=np.nan, strategy=))
+def test_func():
+    '''construct pipeline for preprocessing and transformation'''
+    #
+    # define_pipeline_sequence():
+    # pipeline_sequence =[]
 
+    impute_strategy_num = st.session_state['preprocessing']['nulls']['strategy']['num_features']
+    impute_strategy_cat = st.session_state['preprocessing']['nulls']['strategy']['cat_features']
+
+    if (impute_strategy_num is not None) | (impute_strategy_cat is not None):
+        if st.session_state['preprocessing']['nulls']['impute']:
+            st.write('impute is true')
+
+            if impute_strategy_cat is not None:
+                st.write('cat impute is not none')
+
+            elif impute_strategy_num is not None:
+                st.write('num strategy is not none')
+            else:
+                pass
+            # if st.session_state['preprocessing']['nulls']['strategy'] != 'drop':
+            #     strategy = st.session_state['preprocessing']['nulls']['strategy']
+            #     st.write(f'impute strategy : {strategy}')
+                # pipeline_sequence.append('Impute', SimpleImputer(missing_values=np.nan, strategy=))
+
+        else:
+            st.write('imputation is false')
+    else:
+        st.write('No imputation will be performed')
 def insert_nan_values(df, target):
     '''
         randomly replace 10% of data with nan to examine the missing value imputation
@@ -407,6 +424,6 @@ def insert_nan_values(df, target):
         df[idx] = [item if np.random.rand() < 0.9
                                     else None for item in df[idx]]
 
-    # update  the session_state['pre_processing']['nulls']['presence'] -> True
+    # update  the session_state['preprocessing']['nulls']['presence'] -> True
     check_nulls(df)
     return df

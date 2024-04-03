@@ -76,7 +76,7 @@ with tabs[1]:
     st.dataframe(df, use_container_width=True, hide_index=True)
 
 st.header('Data Inspection', divider='orange')
-presence_nulls = st.session_state['pre_processing']['nulls']['presence']
+presence_nulls = st.session_state['preprocessing']['nulls']['presence']
 
 if presence_nulls:
     st.warning('The dataset contains null values')
@@ -139,48 +139,38 @@ with st.form('Pre-processing'):
     categorical_features = st.session_state['data']['cat_features']
     numeric_features = st.session_state['data']['num_features']
 
-    perform_imputation = False
+    with st.expander('Missing Data Handling'):
+        cols = st.columns([0.2,2,0.5,4])
+        with cols[0]:
+            st.write('')
+        with cols[1]:
+            st.dataframe(df.isnull().sum().to_frame('Number of Nulls'), use_container_width=True)
+            missing_val_cols = df.columns[df.isnull().any()].tolist()
+        with cols[2]:
+            st.write('')
+        with cols[3]:
 
-    if presence_nulls:
-        with st.expander('Missing Data Handling'):
-            cols = st.columns([0.5,2,0.5,4])
-            with cols[0]:
-                st.write('')
-            with cols[1]:
-                st.dataframe(df.isnull().sum().to_frame('Number of Nulls'), use_container_width=True)
-                missing_val_cols = df.columns[df.isnull().any()].tolist()
-            with cols[2]:
-                st.write('')
-            with cols[3]:
-                if st.checkbox('Fill missing values'):
-                    perform_imputation = True
+            st.write('Define the strategy to fill the missing values')
+            st.code('''
+                    For categorical features,
+                        strategy    :   'most_frequent' (default)
+                    For numerical features,
+                        strategy    :   'mean' (default) or 'median'
+                    ''')
 
-                st.write('Define the strategy to fill the missing values or drop rows')
-                st.code('''
-                        For categorical features,
-                            strategy    :   'most_frequent' or 'drop'
-                        For numerical features,
-                            strategy    :   'mean', 'median', 'drop'
-                        ''')
+            st.write('')
 
-                st.write('')
+            # categorical
+            st.write('Categorical Features :')
+            cat_feature_missing = [feature for feature in missing_val_cols if feature in categorical_features]
+            impute_strategy_cat = create_impute_strategy_selector('cat')
 
-                # categorical
-                st.write('Categorical Features :')
-                cat_feature_missing = [feature for feature in missing_val_cols if feature in categorical_features]
-                impute_strategy_cat = create_impute_strategy_selector(cat_feature_missing, 'cat')
+            st.divider()
 
-                st.divider()
-
-                # numerical
-                st.write('Numerical Features :')
-                num_feature_missing = [feature for feature in missing_val_cols if feature in numeric_features]
-                impute_strategy_num = create_impute_strategy_selector(num_feature_missing, 'num')
-
-    else:
-
-        st.info('There is no missing value')
-
+            # numerical
+            st.write('Numerical Features :')
+            num_feature_missing = [feature for feature in missing_val_cols if feature in numeric_features]
+            selected_impute_strategy_num = create_impute_strategy_selector('num')
 
 #  ----------- Data Normalization -----------------
     st.markdown('<b>3. Data Normalization </b>', unsafe_allow_html=True)
@@ -193,8 +183,8 @@ with st.form('Pre-processing'):
             perform_scaling = True
 
 
-        col1, col2 = st.columns(2)
-        with col1:
+        cols = st.columns([0.1,2])
+        with cols[1]:
             st.subheader('Numeric features')
             selected_scaler = st.selectbox('Select normalization method',('Min-Max scaling', 'Z-score normalization (Standardization)'))
 
@@ -217,46 +207,40 @@ with st.form('Pre-processing'):
 
             select_features_scaled = st.multiselect('Select feature to be scaled', numeric_features, numeric_features)
 
-        with col2:
-            st.subheader('Categorical features')
+    st.markdown('<b>4. Categorical data transformation </b>', unsafe_allow_html=True)
+    with st.expander('Categorical data transformation'):
+        cols = st.columns([0.1,2])
+        with cols[1]:
+            # if other encoding strategy needs to be added,
+            # encoding_strategies = ['']
+            # encoder = st.multiselect('Select feature to be scaled', encoding_strategies, encoding_strategies)
+            encoder = st.session_state['preprocessing']['encoding']['encoder']
+            st.write('Categorical data transformation')
+            st.code(f'Encoder : {encoder}')
 
-            perform_encoding = False
+            st.info('the OneHotEncoder finds the unique values per feature and transform the data to a binary one-hot encoding.')
 
-            if st.checkbox('Perform data label encoding'):
-                perform_encoding = True
 
-            if categorical_features:
-                select_features_hotencoded = st.multiselect('Select features to be hot encoded', categorical_features, categorical_features)
-
-            else:
-                st.write('')
-                st.markdown('&nbsp;&nbsp;&nbsp;&nbsp;No categorical features are found', unsafe_allow_html=True)
-
-        st.info('Currently the same normalization/hot-encoding methods are applied to all selected numeric/categorical features. It might be benefitial to add a feature to change normalization method per feature')
-
+    st.warning('WARNING: Currently the same normalization/encoding are applied to all numeric/categorical features.')
     submitted = st.form_submit_button('Apply')
 
     if submitted:
 
         # update session_state based on the form submitted
-
         # feature selection
         st.session_state['model']['features']['included'] = include_options
         st.session_state['model']['features']['excluded'] = exclude_options
         # imputation
-        st.session_state['pre_processing']['nulls']['impute'] = perform_imputation
-        if perform_imputation:
-            st.session_state['preprocessing']['nulls']['strategy'] = {'num_features', impute_strategy_num}
-            st.session_state['preprocessing']['nulls']['strategy'] = {'cat_features', impute_strategy_cat}
+        st.session_state['preprocessing']['nulls']['strategy']['num_features'] = selected_impute_strategy_num
+        st.session_state['preprocessing']['nulls']['strategy']['cat_features'] = impute_strategy_cat
 
         # normalization
-        st.session_state['pre_processing']['normalization']['scaling'] = perform_scaling
-        if perform_imputation:
-            st.session_state['pre_processing']['normalization']['features'] = select_features_scaled
-            st.session_state['pre_processing']['normalization']['scaler'] = selected_scaler
-        # hot encoding
-        if perform_encoding:
-            st.session_state['pre_processing']['hot_encoding']['features'] = select_features_hotencoded
+        st.session_state['preprocessing']['normalization']['scaling'] = perform_scaling
+        if perform_scaling:
+            st.session_state['preprocessing']['normalization']['features'] = select_features_scaled
+            st.session_state['preprocessing']['normalization']['scaler'] = selected_scaler
+        # encoding
+        # st.session_state['preprocessing']['encoding']['encoder'] = encoder
 
         with st.container():
             cols =st.columns([0.5,4,1])
@@ -264,15 +248,14 @@ with st.form('Pre-processing'):
                 st.write('')
             with cols[1]:
 
-                impute = st.session_state['pre_processing']['nulls']['impute']
-
-                if (presence_nulls) & (impute != True) :
-                    st.warning('Null values in your dataset may impact on performance of your machine learning model')
-
                 model_includes_features = st.session_state['model']['features']['included']
                 model_excludes_features = st.session_state['model']['features']['excluded']
-                apply_scaler = st.session_state['pre_processing']['normalization']['scaling']
-                scaler = st.session_state['pre_processing']['normalization']['scaler']
+
+                impute_strategy_num = st.session_state['preprocessing']['nulls']['strategy']['num_features']
+                impute_strategy_cat = st.session_state['preprocessing']['nulls']['strategy']['cat_features']
+
+                apply_scaler = st.session_state['preprocessing']['normalization']['scaling']
+                scaler = st.session_state['preprocessing']['normalization']['scaler']
 
                 st.code(f"""
                             Shape of predictor dataset  :   {df.drop(columns=target).shape} \n
@@ -282,7 +265,8 @@ with st.form('Pre-processing'):
                             Features included           :   {len(model_includes_features)} features, {model_includes_features}\n
                             Features excluded           :   {len(model_excludes_features)} features, {model_excludes_features}\n
                             Missing values              :   {presence_nulls}\n
-                            Imputation                  :   {impute}\n
+                            Imputation strategy         :   numerical features    {impute_strategy_num}
+                                                            categorical features  {impute_strategy_cat}\n
                             Normalization               :   {apply_scaler}     {scaler if apply_scaler else ''}\n
                         """)
             with cols[2]:
@@ -294,3 +278,6 @@ with st.form('Pre-processing'):
 
 
 
+from utils import test_func
+
+# test_func()
