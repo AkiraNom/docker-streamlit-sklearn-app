@@ -1,12 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pickle
 import plotly.express as px
 import streamlit as st
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, precision_score, recall_score, roc_auc_score
 import scikitplot as skplt
 import time
+import datetime
 
 from utils import make_sidebar, warning_dataset_load, optimize_hyperparameters, select_ml_algorithm, construct_pipeline
 
@@ -130,28 +132,28 @@ with cols_button[1]:
     else:
         st.stop()
 
-
 cols =st.columns([0.1,2])
 with cols[1]:
-
+    date_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
+    st.session_state['model']['date_time'] = date_time
     start_time = time.time()
 
-    pipe = construct_pipeline()
-
-    model = pipe
+    model = construct_pipeline()
     model.fit(x_train, y_train)
     elapsed_time = time.time() - start_time
     st.success('Model created successfully!', icon="✅")
     st.write('')
     st.code(f'Elapsed time for Model Training: {elapsed_time:.5f} seconds')
+    st.session_state['model']['elapsed_time'] = elapsed_time
+    st.session_state['model']['trained_model'] = model
 
 # ----------- model evaluation --------------------
 st.header('Model Evaluation', divider='orange')
 
 y_test_preds = model.predict(x_test)
 
-col1, col2, col3 = st.columns([1.5,0.5,2])
-with col1:
+cols = st.columns([1.5,0.5,2])
+with cols[0]:
     st.subheader('Confusion Matrix')
     st.write('')
     conf_mat_fig = plt.figure(figsize=(10,10))
@@ -159,10 +161,7 @@ with col1:
     skplt.metrics.plot_confusion_matrix(y_test, y_test_preds, ax=ax1, normalize=True)
     st.pyplot(conf_mat_fig)
 
-with col2:
-    st.write('')
-
-with col3:
+with cols[2]:
     st.subheader('Feature Importance')
 
     if st.session_state['model']['algorithm']!='Support Vector Machines':
@@ -243,5 +242,12 @@ with st.container():
         st.dataframe(df_classification_report, use_container_width=True)
 
 
-
-
+st.subheader('Save model')
+cols = st.columns([0.1,1.5,0.5])
+with cols[1]:
+    st.info('Click a download button will automatically refresh a page')
+    st.download_button(
+        "Download Model",
+        data=pickle.dumps(model),
+        file_name='model.pkl',
+        )

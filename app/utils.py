@@ -125,7 +125,9 @@ def initialize_session_state():
             'included' : [],
             'excluded' : None
             },
-        'trained_model' : ''
+        'trained_model' : None,
+        'date_time' : '',
+        'elapsed_time' : ''
     }
 
 def default_target_class_col(df):
@@ -499,4 +501,5 @@ def construct_pipeline():
         st.components.v1.html(html_data, scrolling=True, height=300)
 
     return pipe
+
 

@@ -35,3 +35,4 @@ def generate_heatmap(df, target):
     sns.heatmap(corr,ax=ax)
 
     return fig
+
