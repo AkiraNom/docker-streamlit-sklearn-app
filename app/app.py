@@ -220,7 +220,6 @@ with st.form('Pre-processing'):
 
             st.info('the OneHotEncoder finds the unique values per feature and transform the data to a binary one-hot encoding.')
 
-
     st.warning('WARNING: Currently the same normalization/encoding are applied to all numeric/categorical features.')
     submitted = st.form_submit_button('Apply')
 
@@ -248,8 +247,13 @@ with st.form('Pre-processing'):
                 st.write('')
             with cols[1]:
 
-                model_includes_features = st.session_state['model']['features']['included']
-                model_excludes_features = st.session_state['model']['features']['excluded']
+                features_included = st.session_state['model']['features']['included']
+                if st.session_state['model']['features']['excluded'] is None:
+                    features_excluded = None
+                else:
+                    features_excluded = (f'''
+                                        {len(st.session_state['model']['features']['excluded'])} features,  {st.session_state['model']['features']['excluded']}
+                                        ''')
 
                 impute_strategy_num = st.session_state['preprocessing']['nulls']['strategy']['num_features']
                 impute_strategy_cat = st.session_state['preprocessing']['nulls']['strategy']['cat_features']
@@ -262,8 +266,8 @@ with st.form('Pre-processing'):
                             Target column name          :   {target}\n
                             Number of classes           :   {len(np.unique(df[target]))} \n
                             Target class                :   {(*target_class_names,)} \n
-                            Features included           :   {len(model_includes_features)} features, {model_includes_features}\n
-                            Features excluded           :   {len(model_excludes_features)} features, {model_excludes_features}\n
+                            Features included           :   {len(features_included)} features, {features_included}\n
+                            Features excluded           :   {features_excluded}\n
                             Missing values              :   {presence_nulls}\n
                             Imputation strategy         :   numerical features    {impute_strategy_num}
                                                             categorical features  {impute_strategy_cat}\n
@@ -277,7 +281,3 @@ with st.form('Pre-processing'):
 # # https://builtin.com/data-science/feature-importance
 
 
-
-from utils import test_func
-
-# test_func()

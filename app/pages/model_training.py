@@ -3,15 +3,12 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, precision_score, recall_score, roc_auc_score
-from sklearn.pipeline import Pipeline
 import scikitplot as skplt
 import time
 
-from utils import make_sidebar, warning_dataset_load, optimize_hyperparameters, select_ml_algorithm
+from utils import make_sidebar, warning_dataset_load, optimize_hyperparameters, select_ml_algorithm, construct_pipeline
 
 st.set_page_config(
     # page_icon="🧊",
@@ -31,8 +28,8 @@ warning_dataset_load()
 df = st.session_state['data']['dataframe']
 target_class_names = st.session_state['data']['target_class_names']
 target = st.session_state['data']['target']
-X = df.drop(columns=[st.session_state['data']['target']]).loc[:,st.session_state['model']['features']['included']]
-Y = df[st.session_state['data']['target']]
+X = df.drop(columns=target).loc[:,st.session_state['model']['features']['included']]
+Y = df[target]
 
 st.subheader('Data Split')
 
@@ -49,13 +46,11 @@ with st.form('Test_size_form'):
     with cols[0]:
         st.write('')
         if st.checkbox('random_state on', help=random_state_help_text):
-            selected_random_state = True
+            use_random_state = True
         else:
-            selected_random_state = False
+            use_random_state = False
     with cols[1]:
         selected_random_state = st.number_input('Type random state', step=1)
-    with cols[2]:
-        st.write('')
 
     st.write('')
     submitted_test_size = st.form_submit_button('Apply')
@@ -63,23 +58,28 @@ with st.form('Test_size_form'):
 if submitted_test_size:
 
     st.session_state['model']['test_size']  = selected_test_size
-    st.session_state['model']['random_state'] = selected_random_state
+    if use_random_state:
+        st.session_state['model']['random_state'] = selected_random_state
     st.success('Test_size/random state updated successfully!', icon='✅')
 
 test_size = st.session_state['model']['test_size']
 random_state = st.session_state['model']['random_state']
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=random_state)
-st.code(f'''
-        Train, Test data size       :   {int((1-test_size)*100)}%, {int(test_size*100)}%\n
-        Shape of predictor dataset  :   {X.shape} \n
-        Shape of trainng dataset    :   {x_train.shape} \n
-        Shape of testing dataset    :   {x_test.shape} \n
-        ''')
+
+cols = st.columns([0.1,2])
+with cols[1]:
+    st.code(f'''
+            Train, Test data size       :   {int((1-test_size)*100)}%, {int(test_size*100)}%\n
+            Shape of predictor dataset  :   {X.shape} \n
+            Shape of trainng dataset    :   {x_train.shape} \n
+            Shape of testing dataset    :   {x_test.shape} \n
+            Random_state                :   {random_state} \n
+            ''')
 
 # ---------- Select model algorithm -------------------
 st.header('Model Selection', divider='orange')
 
-cols = st.columns([0.2,1,1])
+cols = st.columns([0.1,1,1])
 
 with cols[0]:
     st.write('')
@@ -95,19 +95,17 @@ st.divider()
 
 st.subheader('Data/Model structure')
 with st.container():
-    col1, col2, col3 =st.columns([0.5,4,1])
-    with col1:
-        st.write('')
-    with col2:
+    cols =st.columns([0.1,2])
+
+    with cols[1]:
         features_included = st.session_state['model']['features']['included']
         if st.session_state['model']['features']['excluded'] is None:
             features_excluded = None
+            st.write('feature excluded is none')
         else:
             features_excluded = (f'''
-                                {len(st.session_state['model']['features']['excluded'])} features,
-                                {st.session_state['model']['features']['excluded']}
+                                {len(st.session_state['model']['features']['excluded'])} features,  {st.session_state['model']['features']['excluded']}
                                 ''')
-
 
         st.code(f"""
                     Shape of predictor dataset  :   {X.shape} \n
@@ -123,22 +121,29 @@ with st.container():
                     Model parameters            :   {st.session_state['model']['params']}\n
                     Random_state                :   {st.session_state['model']['random_state']}\n
                 """)
-    with col3:
-        st.write('')
 
-st.write('Initiate bulding a model')
-if st.button('Build model'):
+st.markdown(' <b> Initiate bulding a model </b>', unsafe_allow_html=True)
+cols_button = st.columns([0.1,1])
+with cols_button[1]:
+    if st.button('Build model'):
+        pass
+    else:
+        st.stop()
+
+
+cols =st.columns([0.1,2])
+with cols[1]:
+
     start_time = time.time()
 
-    model = select_ml_algorithm(st.session_state['model']['algorithm'], st.session_state['model']['params'])
+    pipe = construct_pipeline()
+
+    model = pipe
     model.fit(x_train, y_train)
     elapsed_time = time.time() - start_time
     st.success('Model created successfully!', icon="✅")
     st.write('')
     st.code(f'Elapsed time for Model Training: {elapsed_time:.5f} seconds')
-else:
-    st.stop()
-
 
 # ----------- model evaluation --------------------
 st.header('Model Evaluation', divider='orange')
@@ -164,9 +169,9 @@ with col3:
 
         st.write('')
         if st.session_state['model']['algorithm'] != 'Logistic Regression':
-            coefficients = model.feature_importances_
+            coefficients = model.named_steps['classifier'].feature_importances_
         else:
-            coefficients = model.coef_
+            coefficients = model.named_steps['classifier'].coef_
 
         avg_importance = np.mean(np.abs(coefficients), axis=0)
         feature_importance = pd.DataFrame({'Feature': X.columns, 'Importance': avg_importance})
@@ -185,10 +190,8 @@ y_test_prob = model.predict_proba(x_test)
 y_train_pred = model.predict(x_train)
 
 with st.container():
-    col1, col2, col3 = st.columns([0.5,4,1])
-    with col1:
-        st.write('')
-    with col2:
+    cols = st.columns([0.1,1.9,0.1])
+    with cols[1]:
         st.code(f'''
                 Train Accuracy   :   {accuracy_score(y_train, y_train_pred):.5f}\n
                 Test Accuracy    :   {accuracy_score(y_test, y_test_preds):.5f}\n
@@ -196,8 +199,6 @@ with st.container():
                 Test Recall      :   {recall_score(y_test, y_test_preds, average='macro'):.5f}\n
                 Average AUC      :   {roc_auc_score(y_test,y_test_prob, multi_class='ovr'):.5f}\n
                 ''')
-    with col3:
-        st.write('')
 
 st.subheader("Classification Report")
 with st.expander('Details of classification report'):
@@ -229,10 +230,8 @@ with st.expander('Details of classification report'):
             st.image('https://2.bp.blogspot.com/-EvSXDotTOwc/XMfeOGZ-CVI/AAAAAAAAEiE/oePFfvhfOQM11dgRn9FkPxlegCXbgOF4QCLcBGAs/s1600/confusionMatrxiUpdated.jpg')
 st.write('')
 with st.container():
-    col1, col2, col3 = st.columns([1,3,1])
-    with col1:
-        st.write('')
-    with col2:
+    cols = st.columns([0.1,1.9,0.1])
+    with cols[1]:
         st.markdown('<b>Summary statics</b>', unsafe_allow_html=True)
         # selected_precision = st.slider('Precision', min_value=1, max_value=10, value=5, step=1)
         df_classification_report = pd.DataFrame.from_dict(classification_report(y_test,
@@ -242,5 +241,7 @@ with st.container():
                                                                                     .transpose()\
                                                                                     .style.format(precision=5)
         st.dataframe(df_classification_report, use_container_width=True)
-    with col3:
-        st.write('')
+
+
+
+

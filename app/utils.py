@@ -1,18 +1,21 @@
 import pandas as pd
 import numpy as np
-import streamlit as st
-import streamlit.components.v1 as components
-from streamlit.source_util import get_pages
 from sklearn import datasets
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
 from sklearn.model_selection import cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
 from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.utils import estimator_html_repr
 from sklearn.svm import SVC
+from sklearn import set_config
+import streamlit as st
+import streamlit.components.v1 as components
 import time
 
 @st.cache_data
@@ -106,7 +109,7 @@ def initialize_session_state():
                 },
         'normalization' : {
                 'scaling' : False,
-                'scaler' : 'MinMaxScaler',
+                'scaler' : 'Min-Max scaling',
                 'features' : '',
                 },
         'encoding' : {
@@ -160,20 +163,22 @@ def make_sidebar():
 
             selected_dataset = st.selectbox('Select Dataset',('Iris','Wine Dataset','Breast Cancer'))
 
-            if st.form_submit_button('Load Data'):
-                clear_session_state()
-                initialize_session_state()
-                df, target_class_names = load_dataset(selected_dataset)
-                st.session_state['data'] = {
-                                            'dataset' : selected_dataset,
-                                            'dataframe' : df,
-                                            'target' : default_target_class_col(df),
-                                            'target_class_names' : target_class_names,
-                                            'features' : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
-                                            }
-                st.session_state['model']['features']['included'] = df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
-                check_feature_dtype(df, st.session_state['data']['target'])
-                check_nulls(df)
+            cols = st.columns([0.4,1])
+            with cols[1]:
+                if st.form_submit_button('Load Data'):
+                    clear_session_state()
+                    initialize_session_state()
+                    df, target_class_names = load_dataset(selected_dataset)
+                    st.session_state['data'] = {
+                                                'dataset' : selected_dataset,
+                                                'dataframe' : df,
+                                                'target' : default_target_class_col(df),
+                                                'target_class_names' : target_class_names,
+                                                'features' : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
+                                                }
+                    st.session_state['model']['features']['included'] = df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
+                    check_feature_dtype(df, st.session_state['data']['target'])
+                    check_nulls(df)
 
         st.write('')
         st.subheader('Navigation Menu', divider='orange')
@@ -182,18 +187,21 @@ def make_sidebar():
 
 
         st.divider()
-        st.write('Clear all')
+
+        st.markdown('<b>Clear all data</b>:', unsafe_allow_html=True)
         with st.container():
             cols = st.columns([0.1,1])
             with cols[0]:
                 st.write('')
             with cols[1]:
-                if st.button('Clear'):
-                    clear_cache()
-                    clear_session_state()
-                    success = st.success('All data cleared')
-                    time.sleep(1)
-                    success.empty()
+                submitted_clear = st.button('Clear Data')
+
+        if submitted_clear:
+            clear_cache()
+            clear_session_state()
+            success = st.success('All data cleared')
+            time.sleep(1)
+            success.empty()
 
 @st.cache_data
 def load_dataset_description(selected_dataset):
@@ -383,37 +391,6 @@ def create_impute_strategy_selector(key):
             st.info('It replaces missing using the most frequent value along each column')
             return 'most_frequent'
 
-
-
-def test_func():
-    '''construct pipeline for preprocessing and transformation'''
-    #
-    # define_pipeline_sequence():
-    # pipeline_sequence =[]
-
-    impute_strategy_num = st.session_state['preprocessing']['nulls']['strategy']['num_features']
-    impute_strategy_cat = st.session_state['preprocessing']['nulls']['strategy']['cat_features']
-
-    if (impute_strategy_num is not None) | (impute_strategy_cat is not None):
-        if st.session_state['preprocessing']['nulls']['impute']:
-            st.write('impute is true')
-
-            if impute_strategy_cat is not None:
-                st.write('cat impute is not none')
-
-            elif impute_strategy_num is not None:
-                st.write('num strategy is not none')
-            else:
-                pass
-            # if st.session_state['preprocessing']['nulls']['strategy'] != 'drop':
-            #     strategy = st.session_state['preprocessing']['nulls']['strategy']
-            #     st.write(f'impute strategy : {strategy}')
-                # pipeline_sequence.append('Impute', SimpleImputer(missing_values=np.nan, strategy=))
-
-        else:
-            st.write('imputation is false')
-    else:
-        st.write('No imputation will be performed')
 def insert_nan_values(df, target):
     '''
         randomly replace 10% of data with nan to examine the missing value imputation
@@ -427,3 +404,99 @@ def insert_nan_values(df, target):
     # update  the session_state['preprocessing']['nulls']['presence'] -> True
     check_nulls(df)
     return df
+
+def select_feature_dtypes(key):
+    '''
+        create a list of num or cat features included in model
+    '''
+
+    features = st.session_state['data'][f'{key}_features']
+    excluded_features = st.session_state['model']['features']['excluded']
+
+    if excluded_features is None:
+        return features
+    else:
+        return [feature for feature in features if feature not in excluded_features]
+
+def feature_scaler(key):
+
+    if key == 'Min-Max scaling':
+        return MinMaxScaler()
+    elif key == 'Z-score normalization (Standardization)':
+        return StandardScaler()
+    else:
+        return StandardScaler()
+
+def categorical_feature_encoder(key):
+    'add  otions if you test other encoders'
+
+    if key == 'OneHotEncoder':
+        return OneHotEncoder(handle_unknown='ignore')
+
+    else:
+        return OneHotEncoder(handle_unknown='ignore')
+
+
+set_config(display='diagram')
+
+def construct_pipeline():
+    '''construct pipeline for preprocessing and transformation
+        1. obtain num/cat features included in a model
+        2. use simple imputer to replace nan values
+        3. data normalization for numerical features
+        4. One hot encoding for categorical features
+    '''
+
+    num_features = select_feature_dtypes('num')
+    cat_features = select_feature_dtypes('cat')
+
+    num_impute_strategy = st.session_state['preprocessing']['nulls']['strategy']['num_features']
+    cat_impute_strategy = st.session_state['preprocessing']['nulls']['strategy']['cat_features']
+
+    perform_scaling = st.session_state['preprocessing']['normalization']['scaling']
+    normalizer = st.session_state['preprocessing']['normalization']['scaler']
+
+    cat_encoder = st.session_state['preprocessing']['encoding']['encoder']
+
+    if perform_scaling:
+        num_pipe = Pipeline(steps=[
+            ('num_imputer', SimpleImputer(strategy=num_impute_strategy)),
+            ('scaler', feature_scaler(normalizer))
+        ])
+    else:
+        num_pipe = Pipeline(steps=[
+            ('num_imputer', SimpleImputer(strategy=num_impute_strategy)),
+        ])
+
+    cat_pipe = Pipeline([
+        ('cat_imputer', SimpleImputer(strategy=cat_impute_strategy)),
+        ('encoding', categorical_feature_encoder(cat_encoder))
+    ])
+
+    ct = ColumnTransformer(
+        transformers=[
+            ('numerical_features', num_pipe, num_features),
+            ('categorical_features', cat_pipe, cat_features)
+        ])
+
+    algorithm = st.session_state['model']['algorithm']
+    params = st.session_state['model']['params']
+
+    pipe = Pipeline(steps=[('column_transformer', ct),
+                           ('classifier', select_ml_algorithm(algorithm, params))])
+
+    # save pipe diagram as html to inspect
+    path_to_html = './data/pipeline_estimator.html'
+    with open(path_to_html, 'w') as f:
+        f.write(estimator_html_repr(pipe))
+
+    with open(path_to_html,'r') as f:
+        html_data = f.read()
+
+    st.markdown('<b>Visualize a scikit-learn pipeline in the model</b>', unsafe_allow_html=True)
+    cols = st.columns([0.1,2])
+    with cols[1]:
+        st.components.v1.html(html_data, scrolling=True, height=300)
+
+    return pipe
+
