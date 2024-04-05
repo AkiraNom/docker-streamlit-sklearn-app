@@ -1,3 +1,5 @@
+from joblib import load
+import os
 import pandas as pd
 import numpy as np
 from sklearn import datasets
@@ -86,14 +88,12 @@ def clear_cache():
 
 def clear_session_state():
     '''Clear all session_states'''
-    for key in st.session_state.keys():
-        del st.session_state[key]
+st.session_state.clear()
 
 def initialize_session_state():
     ''' initialize session_state'''
     st.session_state['data'] = {
         'dataset' : None,
-        'dataframe' : None,
         'target' : None,
         'target_class_names' : None,
         'features' : None,
@@ -128,6 +128,13 @@ def initialize_session_state():
         'trained_model' : None,
         'date_time' : '',
         'elapsed_time' : ''
+    }
+    st.session_state['object'] = {
+        'dataframe' : None,
+        'x_train' : None,
+        'y_train' : None,
+        'x_test' : None,
+        'y_test' : None
     }
 
 def default_target_class_col(df):
@@ -168,16 +175,17 @@ def make_sidebar():
             cols = st.columns([0.4,1])
             with cols[1]:
                 if st.form_submit_button('Load Data'):
+                    clear_cache()
                     clear_session_state()
                     initialize_session_state()
                     df, target_class_names = load_dataset(selected_dataset)
                     st.session_state['data'] = {
                                                 'dataset' : selected_dataset,
-                                                'dataframe' : df,
                                                 'target' : default_target_class_col(df),
                                                 'target_class_names' : target_class_names,
                                                 'features' : df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
                                                 }
+                    st.session_state['object'] = {'dataframe' : df}
                     st.session_state['model']['features']['included'] = df.drop(st.session_state['data']['target'], axis=1).columns.tolist()
                     check_feature_dtype(df, st.session_state['data']['target'])
                     check_nulls(df)
@@ -185,7 +193,8 @@ def make_sidebar():
         st.write('')
         st.subheader('Navigation Menu', divider='orange')
         st.page_link('app.py', label = 'Overview dataset')
-        st.page_link('pages/model_training.py', label='Build machine learning model')
+        st.page_link('./pages/model_training.py', label='Build machine learning model')
+        st.page_link('./pages/prediction.py', label='Predict class')
 
 
         st.divider()
@@ -379,6 +388,13 @@ def warning_dataset_load():
         st.warning('Please select dataset to load on the sidebar')
         st.stop()
 
+def warning_build_model():
+    if 'x_train' not in st.session_state['object']:
+        st.write('')
+        st.write('')
+        st.warning('Please build a model first')
+        st.stop()
+
 def create_impute_strategy_selector(key):
     '''
         Create select box to chose strategy for filling missing values
@@ -438,8 +454,10 @@ def categorical_feature_encoder(key):
     else:
         return OneHotEncoder(handle_unknown='ignore')
 
-
+# set_config menu for pipeline display
 set_config(display='diagram')
+
+from sklearn.pipeline import make_pipeline
 
 def construct_pipeline():
     '''construct pipeline for preprocessing and transformation
@@ -479,7 +497,7 @@ def construct_pipeline():
         transformers=[
             ('numerical_features', num_pipe, num_features),
             ('categorical_features', cat_pipe, cat_features)
-        ])
+        ],remainder='passthrough')
 
     algorithm = st.session_state['model']['algorithm']
     params = st.session_state['model']['params']
@@ -502,4 +520,27 @@ def construct_pipeline():
 
     return pipe
 
+def save_classification_report(df):
 
+    file_name = "./data/classification_report.csv"
+    if os.path.isfile(file_name):
+
+        expand = 1
+        while True:
+            expand += 1
+            new_file_name = file_name.split(".csv")[0] + str(expand) + ".csv"
+            if os.path.isfile(new_file_name):
+                continue
+            else:
+                file_name = new_file_name
+                break
+
+    df.to_csv(file_name)
+
+@st.cache_data
+def load_model():
+
+    model_path = './data/ml_model.model'
+    model = load(model_path)
+
+    return model

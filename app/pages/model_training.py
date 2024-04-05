@@ -1,16 +1,30 @@
+from joblib import dump
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pickle
 import plotly.express as px
 import streamlit as st
+# from sklearn import set_config
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (accuracy_score,
+                             classification_report,
+                             precision_score,
+                             recall_score,
+                             roc_auc_score)
 import scikitplot as skplt
 import time
 import datetime
 
-from utils import make_sidebar, warning_dataset_load, optimize_hyperparameters, select_ml_algorithm, construct_pipeline
+# # set transform output config
+# set_config(transform_output = "pandas")
+
+from utils import (make_sidebar,
+                   warning_dataset_load,
+                   optimize_hyperparameters,
+                   select_ml_algorithm,
+                   construct_pipeline,
+                   save_classification_report)
 
 st.set_page_config(
     # page_icon="🧊",
@@ -27,7 +41,7 @@ st.header('Model Training', divider='orange')
 
 warning_dataset_load()
 
-df = st.session_state['data']['dataframe']
+df = st.session_state['object']['dataframe']
 target_class_names = st.session_state['data']['target_class_names']
 target = st.session_state['data']['target']
 X = df.drop(columns=target).loc[:,st.session_state['model']['features']['included']]
@@ -67,7 +81,9 @@ if submitted_test_size:
 test_size = st.session_state['model']['test_size']
 random_state = st.session_state['model']['random_state']
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=random_state)
-
+st.session_state['object']['x_train'] = x_train
+st.session_state['object']['x_test'] = x_test
+st.session_state['object']['y_test'] = y_test
 cols = st.columns([0.1,2])
 with cols[1]:
     st.code(f'''
@@ -137,7 +153,6 @@ with cols[1]:
     date_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S%z")
     st.session_state['model']['date_time'] = date_time
     start_time = time.time()
-
     model = construct_pipeline()
     model.fit(x_train, y_train)
     elapsed_time = time.time() - start_time
@@ -237,17 +252,28 @@ with st.container():
                                                                                 y_test_preds,
                                                                                 target_names=target_class_names,
                                                                                 output_dict=True))\
-                                                                                    .transpose()\
-                                                                                    .style.format(precision=5)
-        st.dataframe(df_classification_report, use_container_width=True)
+                                                                                    .transpose()
+
+        st.dataframe(df_classification_report.style.format(precision=5), use_container_width=True)
 
 
-st.subheader('Save model')
+
+
+st.subheader('Save model and classification report')
 cols = st.columns([0.1,1.5,0.5])
 with cols[1]:
     st.info('Click a download button will automatically refresh a page')
     st.download_button(
         "Download Model",
         data=pickle.dumps(model),
-        file_name='model.pkl',
-        )
+        file_name='ml_model.pkl',
+        # on_click=save_classification_report(df_classification_report)
+    )
+
+# save model
+model_path = './data/ml_model.model'
+dump(model, model_path)
+
+
+
+

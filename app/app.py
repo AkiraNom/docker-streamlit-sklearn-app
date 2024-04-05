@@ -21,7 +21,7 @@ make_sidebar()
 cover_page()
 warning_dataset_load()
 
-df = st.session_state['data']['dataframe']
+df = st.session_state['object']['dataframe']
 target_class_names = st.session_state['data']['target_class_names']
 target = st.session_state['data']['target']
 
@@ -228,7 +228,8 @@ with st.form('Pre-processing'):
         # update session_state based on the form submitted
         # feature selection
         st.session_state['model']['features']['included'] = include_options
-        st.session_state['model']['features']['excluded'] = exclude_options
+        if exclude_options is not []:
+            st.session_state['model']['features']['excluded'] = exclude_options
         # imputation
         st.session_state['preprocessing']['nulls']['strategy']['num_features'] = selected_impute_strategy_num
         st.session_state['preprocessing']['nulls']['strategy']['cat_features'] = impute_strategy_cat
@@ -276,6 +277,3 @@ with st.form('Pre-processing'):
             with cols[2]:
                 st.write('')
 
-# # -------------------------------------------------
-# # prediction with your input
-# # https://builtin.com/data-science/feature-importance
