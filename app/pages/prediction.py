@@ -9,7 +9,7 @@ from sklearn import set_config
 set_config(transform_output = "pandas")
 
 # load local css for sidebar
-local_css('./style.css')
+local_css('.app/style.css')
 make_sidebar()
 
 warning_dataset_load()

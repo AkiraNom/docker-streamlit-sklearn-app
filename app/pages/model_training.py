@@ -26,7 +26,7 @@ from utils import (make_sidebar,
 
 
 # load local css for sidebar
-local_css('./style.css')
+local_css('.app/style.css')
 make_sidebar()
 st.title('Building ML Model', anchor='build-model')
 st.write('')
