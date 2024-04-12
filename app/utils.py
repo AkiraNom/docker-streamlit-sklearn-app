@@ -403,6 +403,11 @@ def warning_dataset_load():
         st.write('')
         st.warning('Please select dataset to load on the sidebar')
         st.stop()
+    if 'object' not in st.session_state:
+        st.write('')
+        st.write('')
+        st.warning('Please select dataset to load on the sidebar')
+        st.stop()
 
 def warning_build_model():
     if 'x_train' not in st.session_state['object']:
