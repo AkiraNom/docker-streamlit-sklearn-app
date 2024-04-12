@@ -10,7 +10,7 @@ from plot_func import plot_scatter_matrix, generate_heatmap
 warnings.filterwarnings('ignore')
 
 # load local css for sidebar
-local_css('.app/style.css')
+local_css('./app/style.css')
 make_sidebar()
 
 warning_dataset_load()
