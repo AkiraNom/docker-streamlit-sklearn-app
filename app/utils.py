@@ -254,12 +254,12 @@ def cover_page():
         with icon_cols[0]:
             st.write('')
         with icon_cols[1]:
-            st.image('./img/scikit-learn.png', width=100)
+            st.image('.app./img/scikit-learn.png', width=100)
             st.markdown('''[scikit-learn](https://scikit-learn.org/stable/)''', unsafe_allow_html=True)
         with icon_cols[2]:
             st.write('')
         with icon_cols[3]:
-            st.image('./img/Streamlit.png', width=100)
+            st.image('./app/img/Streamlit.png', width=100)
             st.markdown('&nbsp;&nbsp;&nbsp;[streamlit](https://streamlit.io/)', unsafe_allow_html=True)
 
     with cols[2]:
