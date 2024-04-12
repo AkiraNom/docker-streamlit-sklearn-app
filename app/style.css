@@ -1,0 +1,12 @@
+/* remove bullet points and text-indentation*/
+ul {
+    list-style: none;
+    text-indent: 15px;
+}
+
+a {
+    text-decoration: none;
+    color: black !important;
+    font-size:16px;
+    /*font-weight:bold;*/
+}

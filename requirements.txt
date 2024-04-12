@@ -4,6 +4,7 @@ matplotlib
 pandas
 plotly
 streamlit
+streamlit-extras
 scipy==1.11.4
 scikit-learn
 scikit-plot

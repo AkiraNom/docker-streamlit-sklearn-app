@@ -6,8 +6,7 @@ from sklearn import datasets
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LogisticRegression,LogisticRegressionCV
-from sklearn.model_selection import cross_val_score,cross_val_predict,ShuffleSplit,GridSearchCV
+from sklearn.linear_model import LogisticRegression
 from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -18,6 +17,7 @@ from sklearn.svm import SVC
 from sklearn import set_config
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_extras.switch_page_button import switch_page
 import time
 
 @st.cache_data
@@ -125,7 +125,6 @@ def initialize_session_state():
             'included' : [],
             'excluded' : None
             },
-        'trained_model' : None,
         'date_time' : '',
         'elapsed_time' : ''
     }
@@ -134,7 +133,8 @@ def initialize_session_state():
         'x_train' : None,
         'y_train' : None,
         'x_test' : None,
-        'y_test' : None
+        'y_test' : None,
+        'trained_model' : None
     }
 
 def default_target_class_col(df):
@@ -162,9 +162,16 @@ def check_feature_dtype(df, target):
     st.session_state['data']['cat_features'] = cat_features
     st.session_state['data']['num_features'] = num_features
 
+def local_css(path):
+  with open(path) as f:
+      css = f.read()
+
+  return st.markdown(f'<style>{css}</style>',
+                     unsafe_allow_html=True)
+
 def make_sidebar():
     with st.sidebar:
-        st.title('💎 Multilabel Machine Learning Classification App')
+        st.title('Multilabel Machine Learning Classification App')
         st.write('')
 
         st.subheader('Load Data')
@@ -192,10 +199,19 @@ def make_sidebar():
 
         st.write('')
         st.subheader('Navigation Menu', divider='orange')
-        st.page_link('app.py', label = 'Overview dataset')
-        st.page_link('./pages/model_training.py', label='Build machine learning model')
-        st.page_link('./pages/prediction.py', label='Predict class')
-
+        st.page_link('app.py', label = 'Overview')
+        st.markdown('''<ul>
+                    <li><a href="#select-data">Data Selection</a></li>
+                    </ul>''', unsafe_allow_html=True)
+        st.page_link('./pages/exploratory_data_analysis.py', label='Exploratory data analysis')
+        st.page_link('./pages/model_training.py', label='Build a ML model')
+        st.markdown('''<ul>
+                    <li><a href="#pre-processing">Data Pre-processing</a></li>
+                    <li><a href="#model-training">Data Training</a></li>
+                    <li><a href="#model-evaluation">Data Evaluation</a></li>
+                    <li><a href="#build-model">Build Model</a></li>
+                    </ul>''', unsafe_allow_html=True)
+        st.page_link('./pages/prediction.py', label='Predict a class')
 
         st.divider()
 
@@ -393,6 +409,13 @@ def warning_build_model():
         st.write('')
         st.write('')
         st.warning('Please build a model first')
+        cols =st.columns([0.5,1,1])
+        with cols[1]:
+            switch_page_build = st.button('Build a ML model')
+
+        if switch_page_build:
+            switch_page('model_training')
+
         st.stop()
 
 def create_impute_strategy_selector(key):
@@ -544,3 +567,8 @@ def load_model():
     model = load(model_path)
 
     return model
+
+
+
+
+

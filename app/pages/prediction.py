@@ -3,19 +3,18 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils import load_model, make_sidebar, warning_dataset_load, warning_build_model
+from utils import load_model, make_sidebar, local_css, warning_dataset_load, warning_build_model
 
 from sklearn import set_config
 set_config(transform_output = "pandas")
 
+# load local css for sidebar
+local_css('./style.css')
 make_sidebar()
-
-st.write(st.session_state)
 
 warning_dataset_load()
 warning_build_model()
 
-model_classifier = load_model()
 target_class_names = st.session_state['data']['target_class_names']
 features = st.session_state['model']['features']['included']
 df = st.session_state['object']['dataframe']
@@ -23,10 +22,19 @@ x_train = st.session_state['object']['x_train']
 x_test = st.session_state['object']['x_test']
 y_test = st.session_state['object']['y_test']
 
+st.title('Predict a class with a trained model')
+st.write('')
+st.write('')
+st.write('')
 
+# use a saved model
+# saved_model = st.checkbox('Use a saved model')
+# if saved_model:
+#     model_classifier = load_model()
 
+model_classifier = st.session_state['object']['trained_model']
 sliders = []
-col1, col2 = st.columns(2)
+col1, col2 = st.columns(2, gap='large')
 with col1:
     for feature in features:
         ing_slider = st.slider(label=feature, min_value=float(df[feature].min()), max_value=float(df[feature].max()))
@@ -34,24 +42,19 @@ with col1:
 
 df_prediction_input = pd.DataFrame(sliders, index=features).transpose()
 
-st.dataframe(df_prediction_input)
-
 with col2:
-    col1, col2 = st.columns(2, gap="medium")
+    st.write('Input parameters')
+    st.dataframe(df_prediction_input, hide_index=True)
 
     prediction = model_classifier.predict(df_prediction_input)
 
-    with col1:
-        st.markdown("### Model Prediction : <strong style='color:tomato;'>{}</strong>".format(prediction[0]), unsafe_allow_html=True)
+    st.markdown(f"## Model Prediction : <strong style='color:tomato;'>{prediction[0]}</strong>", unsafe_allow_html=True)
 
     probs = model_classifier.predict_proba(df_prediction_input)
     probability = probs[0,0]
 
-    with col2:
-        st.metric(label="Model Confidence", value="{:.2f} %".format(probability*100), delta="{:.2f} %".format((probability-0.5)*100))
+    st.write('')
+    st.write('')
 
-    # explainer = lime_tabular.LimeTabularExplainer(x_train.to_numpy(), mode="classification", class_names=target_class_names, feature_names=features)
-    # explanation = explainer.explain_instance(df_prediction_input, model_classifier.predict, num_features=len(features), top_labels=3)
-    # interpretation_fig = explanation.as_pyplot_figure(label=prediction[0])
-    # st.pyplot(interpretation_fig, use_container_width=True)
+    st.metric(label='Model Confidence', value=f'{probability*100:.2f} %', delta=f'{(probability-0.5)*100:.2f}')
 
