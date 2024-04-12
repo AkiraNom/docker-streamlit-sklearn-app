@@ -1,9 +1,12 @@
-from lime import lime_tabular
-import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils import load_model, make_sidebar, local_css, warning_dataset_load, warning_build_model
+st.set_page_config(
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+from utils import make_sidebar, local_css, warning_dataset_load, warning_build_model
 
 from sklearn import set_config
 set_config(transform_output = "pandas")

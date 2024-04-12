@@ -529,7 +529,7 @@ def construct_pipeline():
                            ('classifier', select_ml_algorithm(algorithm, params))])
 
     # save pipe diagram as html to inspect
-    path_to_html = './data/pipeline_estimator.html'
+    path_to_html = './app/data/pipeline_estimator.html'
     with open(path_to_html, 'w') as f:
         f.write(estimator_html_repr(pipe))
 
@@ -545,7 +545,7 @@ def construct_pipeline():
 
 def save_classification_report(df):
 
-    file_name = "./data/classification_report.csv"
+    file_name = "./app/data/classification_report.csv"
     if os.path.isfile(file_name):
 
         expand = 1
@@ -563,7 +563,7 @@ def save_classification_report(df):
 @st.cache_data
 def load_model():
 
-    model_path = './data/ml_model.model'
+    model_path = './app/data/ml_model.model'
     model = load(model_path)
 
     return model

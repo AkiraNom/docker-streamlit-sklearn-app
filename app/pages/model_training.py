@@ -15,6 +15,11 @@ import scikitplot as skplt
 import time
 import datetime
 
+st.set_page_config(
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 from utils import (make_sidebar,
                    local_css,
                    warning_dataset_load,
@@ -23,7 +28,6 @@ from utils import (make_sidebar,
                    optimize_hyperparameters,
                    construct_pipeline,
                    )
-
 
 # load local css for sidebar
 local_css('./app/style.css')
@@ -437,7 +441,7 @@ with cols[1]:
     )
 
 # save model
-model_path = './data/ml_model.model'
+model_path = './app/data/ml_model.model'
 dump(model, model_path)
 
 

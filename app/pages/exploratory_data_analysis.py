@@ -4,8 +4,14 @@ import warnings
 import streamlit as st
 from streamlit_extras.switch_page_button import switch_page
 
+st.set_page_config(
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 from utils import make_sidebar, local_css, warning_dataset_load, select_target_class_column
 from plot_func import plot_scatter_matrix, generate_heatmap
+
 
 warnings.filterwarnings('ignore')
 
@@ -109,10 +115,10 @@ st.write('')
 st.write('')
 
 st.divider()
-cols = st.columns([1,0.5,1])
+cols = st.columns([0.5,1,1])
 with cols[1]:
-    st.subheader('to a model building page')
-cols = st.columns([1,0.6,0.9])
+    st.subheader('to a build a model page')
+cols = st.columns([0.7,1,0.8])
 with cols[1]:
     switch_page_build = st.button('Build a ML model')
 
